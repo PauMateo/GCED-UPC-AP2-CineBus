@@ -1,0 +1,8 @@
+Required modules with their respective installation commands:
+requests  --  pip3 install requests
+beatifoulsoup  -- pip3 install beatifoulsoup
+networkx -- pip3 install networkx
+osmnx -- pip3 install osmnx
+haversine -- pip3 install haversine
+staticmap -- pip3 install staticmap
+rich -- pip3 install rich
