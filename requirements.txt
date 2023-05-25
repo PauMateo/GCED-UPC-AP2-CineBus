@@ -1,4 +1,4 @@
-Required modules with their respective installation commands:
+Mòduls necessaris i les seves commandes d'instal·lació respectives:
 requests  --  pip3 install requests
 beatifoulsoup  -- pip3 install beatifoulsoup
 networkx -- pip3 install networkx
