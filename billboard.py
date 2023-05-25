@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-import json
 import requests
+import json
 from bs4 import BeautifulSoup as BSoup
+#  import traceback
 
 
 @dataclass
 class Film:
     title: str
-    genre: str
+    genres: list[str]
     director: str
     actors: list[str]
 
@@ -26,7 +27,6 @@ class Projection:
     end: tuple[int, int]  # end time
     duration: int  # minutes
     language: str  # V.O or Spanish
-    ...
 
 
 @dataclass
@@ -34,14 +34,93 @@ class Billboard:
     films: list[Film]
     cinemas: list[Cinema]
     projections: list[Projection]
-    ...  # metodes per cercar-hi inormacio !!
+    poss_filters: list[str]  # llista de possibles filtres que es poden aplicar
+    genres: set[str]  # conjunt dels diferents gèneres de les películes
+
+    def __init__(self, f: list[Film] = [], c: list[Cinema] = [],
+                 p: list[Projection] = [], g: set[str] = set()):
+        '''Constructor'''
+
+        self.films = f
+        self.cinemas = c
+        self.projections = p
+        self.poss_filters = ['genre', 'director', 'film', 'cinema',
+                             'time', 'duration', 'language']
+        self.genres = g
+
+    def filter(self, filters: dict[str, str]) -> list[Projection]:
+        '''Retorna la cartellera aplicant el filtre donat. Els possibles tipus
+        de llistes son a la llista self.poss_filters. El format és:
+        {tipus_filtre: filtre}.
+        El filtre time retorna les projeccions que
+        comencen i acaben dins l'horari indicat, i el format és:
+        {time: hh:mm-hh:mm} (start-end).
+        El filtre duration retorna totes les projeccions de durada
+        igual o inferior a la donada, en minuts.
+        El filtre genre retorna totes les projeccions que siguin dels
+        gèneres donats, i el format és: {genre: genre1-genre2-...}. Es poden
+        donar múltiples gèneres. La resta de filtres actuen obviament.
+        '''
+
+        try:
+            assert all([k in self.poss_filters for k in filters.keys()])
+
+            return [x for x in self.projections if
+                    all([self._apply_filter(x, f) for f in filters.items()])
+                    ]
+
+        except Exception:
+            raise ValueError
+            '''e = traceback.format_exc()
+            print(f'\n \n {e} \n \n \n')
+            raise Exception('...')'''
+
+    def _filter_time(self, x: Projection, filter: str) -> bool:
+        '''Aplica per separat el filtre d'horari a una
+        projecció x. Retorna True si l'horari de la
+        projecció donada est9à inclòs dins del del filtre.'''
+        s, e = filter.split('-')
+        start = tuple(map(int, s.split(':')))       # refer codi
+        end = tuple(map(int, e.split(':')))
+
+        return (start <= x.start) and (start <= x.end <= end)
+
+    def _filter_duration(self, x: Projection, filter: str) -> bool:
+        '''Filtre de tipus duration'''
+        return x.duration <= int(filter)
+
+    def _filter_cinema(self, x: Projection, filter: str) -> bool:
+        '''Filtre de tipus cinema'''
+        return x.cinema.name == filter
+
+    def _filter_genre(self, x: Projection, filter: str) -> bool:
+        '''Filtre de tipus genre '''
+        return all([g in x.film.genres for g in filter.split('-')])
+
+    def _filter_film(self, x: Projection, filter: str) -> bool:
+        ''''''
+        return x.film.title == filter
+
+    def _filter_language(self, x: Projection, filter: str) -> bool:
+        ''''''
+        return x.language == filter
+
+    def _filter_director(self, x: Projection, filter: str) -> bool:
+        ''''''
+        return x.language == filter
+
+    def _apply_filter(self, x: Projection, flt: tuple[str, str]) -> bool:
+        '''Aplica el filtre donat a la projecció x. Retorna True si
+        x compleix els requisits del filtre, i False altrament.'''
+
+        return getattr(self, '_filter_' + flt[0])(x, flt[1])
 
 
 def read() -> Billboard:
-    '''Funcio que descarrega i retorna les dades
-    necessaries i retorna la cartellera actual
+    '''Funció que descarrega les dades necessaries
+    i retorna la cartellera del dia actual.
     '''
-    bboard: Billboard = Billboard([], [], [])
+    bboard: Billboard = Billboard()
 
     urls = [
         "https://www.sensacine.com/cines/cines-en-72480/",
@@ -75,10 +154,9 @@ def read() -> Billboard:
             # today's panel is:
             actual_panel = panels[i].find('div', class_='item-0')
 
-            # build films; iterate through the current cinema's films
             if actual_panel is None:
                 continue
-
+            # build films; iterate through the current cinema's films
             for info in actual_panel.find_all('div', class_='item_resa'):
 
                 data = json.loads(info.find('div', class_='j_w')['data-movie'])
@@ -87,6 +165,8 @@ def read() -> Billboard:
                             data['directors'][0],
                             data['actors'])
 
+                for genre in data['genre']:
+                    bboard.genres.add(genre)
                 if film not in bboard.films:
                     bboard.films.append(film)
 
@@ -107,10 +187,18 @@ def read() -> Billboard:
                     start = int(start[0]), int(start[1])
                     end = times[2].split(':')
                     end = int(end[0]), int(end[1])
-                    duration = (end[0] - start[0])*60 + end[1] - start[1]
+                    if end < start:
+                        duration = (end[0] + 24 - start[0]) * \
+                            60 + end[1] - start[1]
+                    else:
+                        duration = (end[0] - start[0]) * 60 + end[1] - start[1]
 
                     projection = Projection(film, cinema,
                                             start, end, duration, language)
                     bboard.projections.append(projection)
+
+    bboard.projections.sort(key=lambda t: t.start)
+    bboard.cinemas.sort(key=lambda c: c.name)
+    bboard.films.sort(key=lambda f: f.title)
 
     return bboard
