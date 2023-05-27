@@ -2,7 +2,15 @@ from dataclasses import dataclass
 import requests
 import json
 from bs4 import BeautifulSoup as BSoup
+from typing import TypeAlias
 #  import traceback
+
+Coord:  TypeAlias = tuple[float, float]   # (latitude, longitude)
+
+'''@dataclass  # atlernativa? millor? més còmode a la vista...
+class Coord:
+    x: float
+    y: float'''
 
 
 @dataclass
@@ -17,6 +25,7 @@ class Film:
 class Cinema:
     name: str
     address: str
+    coord: Coord
 
 
 @dataclass
@@ -80,9 +89,15 @@ class Billboard:
         projecció x. Retorna True si l'horari de la
         projecció donada est9à inclòs dins del del filtre.'''
         s, e = filter.split('-')
-        start = tuple(map(int, s.split(':')))       # refer codi
-        end = tuple(map(int, e.split(':')))
+        start = tuple(map(int, s.split(':')))
+        end: tuple[int, int] = tuple(map(int, e.split(':')))
 
+        if end < start:
+            return (start <= x.start) and \
+                        (start <= x.end <= (end[0]+24, end[1]))
+        elif x.end < x.start:
+            return (start <= x.start) and \
+                        (start <= (x.end[0]+24, x.end[1]) <= end)
         return (start <= x.start) and (start <= x.end <= end)
 
     def _filter_duration(self, x: Projection, filter: str) -> bool:
@@ -127,6 +142,39 @@ def read() -> Billboard:
         "https://www.sensacine.com/cines/cines-en-72480/?page=2",
         "https://www.sensacine.com/cines/cines-en-72480/?page=3"]
 
+    cinemas_coords: dict[str, Coord] = {
+     'Arenas Multicines 3D': (41.3772755040237, 2.1494606118543174),
+     'Aribau Multicines': (41.38627791232003, 2.1626466396047315),
+     'Balmes Multicines': (41.40736701577681, 2.1386003665962647),
+     'Boliche Cinemes': (41.395455693930685, 2.1537420837800743),
+     'Bosque Multicines': (41.40170100944678, 2.151862866595919),
+     'Cine Capri': (41.32596975311035, 2.0953600684360474),
+     'Cinebaix': (41.38219022211328, 2.0450222819345742),
+     'Cinema Comedia': (41.389840893154734, 2.1676697261098146),
+     'Cinemes Can Castellet': (41.34543643591452, 2.0405818107673084),
+     'Cinemes Girona': (41.399794384796934, 2.164527008925862),
+     'Cinemes Sant Cugat': (41.469787854906144, 2.0901121242699876),
+     'Cines Montcada': (41.494336421716746, 2.1802964954365134),
+     'Cines Verdi Barcelona': (41.40418671718023, 2.156881199733329),
+     'Cinesa Diagonal 3D': (41.39403763128772, 2.136224366595472),
+     'Cinesa Diagonal Mar 18': (41.410455041612835, 2.216579268441141),
+     'Cinesa La Farga 3D': (41.36332421392511, 2.10484096843832),
+     'Cinesa La Maquinista 3D': (41.43972724360848, 2.19825733591856),
+     'Cinesa SOM Multiespai': (41.435657030361924, 2.1807281512581507),
+     'Filmax Gran Via 3D': (41.35838637725132, 2.1284332512534734),
+     'Full HD Cinemes Centre Splau': (41.34768595488537, 2.0787896276608895),
+     'Glòries Multicines': (41.40545590868874, 2.192622751256335),
+     'Gran Sarrià Multicines': (41.394968294956726, 2.1339804089255914),
+     'Maldá Arts Forum': (41.383427668697074, 2.17389273775988),
+     'Ocine Màgic': (41.44394440377754, 2.230652241452959),
+     'Renoir Floridablanca': (41.3818434726659, 2.162643654944318),
+     'Sala Phenomena Experience': (41.409265798307516, 2.171714535916728),
+     'Yelmo Cines Baricentro': (41.50844678386131, 2.138359280097517),
+     'Yelmo Cines Icaria 3D': (41.390815346532214, 2.1981648665952647),
+     'Zumzeig Cinema': (41.37754823657382, 2.145091453099332),
+     'Yelmo Cines Sant Cugat': (41.48365672049728, 2.0538435271627873)
+    }
+
     for url in urls:
         try:
             r = requests.get(url)
@@ -148,7 +196,7 @@ def read() -> Billboard:
             address = headers[i].find_all(
                 'span', class_="lighten")[1].text[1:-1]
 
-            cinema = Cinema(name, address)
+            cinema = Cinema(name, address, cinemas_coords[name])
             bboard.cinemas.append(cinema)
 
             # today's panel is:
