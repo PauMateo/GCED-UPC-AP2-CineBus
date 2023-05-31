@@ -32,7 +32,8 @@ def get_osmnx_graph() -> OsmnxGraph:
     for u, v, key, geom in graph.edges(data="geometry", keys=True):
         if geom is not None:
             del (graph[u][v][key]["geometry"])
-
+    for node in graph.nodes():
+        graph.nodes[node]['pos'] = (graph.nodes[node]['x'], graph.nodes[node]['y'])
     return graph
 
 
@@ -79,12 +80,12 @@ def nearest_node2(g: OsmnxGraph, point: Coord) -> int:
     '''Funció que retorna el node més proper al punt donat
     al graf g. Retorna None si la distància és major a {?}'''
     X, Y = point[0], point[1]
-    nodes, dist = ox.nearest_nodes(g, X, Y, return_dist=True)
+    nodes = ox.nearest_nodes(g, X, Y)
 
     if type(nodes) == list:
         print(nodes)
-        return nodes[0], dist  # quansevol d'aquests nodes ja ens està bé!
-    return nodes
+        return nodes[0]  # quansevol d'aquests nodes ja ens està bé!
+    return nodes  # type: ignore
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
@@ -93,28 +94,50 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     # add cinemas here?
 
     for u, nbrsdict in g1.adjacency():
-        city.add_node(u)
+        attr = g1.nodes[u]
+        city.add_node(u, **attr)
         city.nodes[u]['tipus'] = 'Cruilla'
         # for each adjacent node v and its (u, v) edges' information ...
         for v, edgesdict in nbrsdict.items():
-            city.add_node(v)
+            attr = g1.nodes[v]
+            city.add_node(v, **attr)
             city.nodes[v]['tipus'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
 
             eattr = edgesdict[0]
-            city.add_edge(u, v, **eattr)
+            if u != v:
+                city.add_edge(u, v, **eattr)
 
-    nearest_nodes: dict[int, int] = {}  # Parada: Cruilla
+     # Parada: Cruilla
 
-    print('checkpoint')
+    print('checkpoint 1')
 
-    for u in g2.nodes():
+    nearest_nodes: dict[int, int] = {}
+    list_x: list[float] = []
+    list_y: list[float] = []
+
+    for u in g2.nodes:
         assert g2.nodes[u]['tipus'] == 'Parada'
-        city.add_node(u)
-        nearest_nodes[u] = nearest_node2(g1, g2.nodes[u]['pos'])
+        attr = g2.nodes[u]
+        city.add_node(u, **attr)
+        list_x.append(g2.nodes[u]['pos'][0])  # ojo amb girar coordenades xd
+        list_y.append(g2.nodes[u]['pos'][1])
+
+    parada_cruilla: list[int] = ox.nearest_nodes(g1,
+                                                   list_x,
+                                                   list_y, return_dist=False)
+
+
+    for i, u in enumerate(g2.nodes()):
+        nearest_nodes[u] = parada_cruilla[i]
+
+    assert len(parada_cruilla) == len(nearest_nodes)
+    print('checkpoint 2')
 
     for edge in g2.edges():
-        assert g2.nodes[edge]['tipus'] == 'Bus'
+        #  assert g2.nodes[edge]['tipus'] == 'Bus'
         u, v = edge
+        if u == v:
+            continue
         i = nearest_nodes[u]
         j = nearest_nodes[v]
         dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
@@ -144,7 +167,9 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
 def show(g: CityGraph) -> None:
     '''Mostra g de forma interactiva en una finestra'''
-    ...
+    posicions = nx.get_node_attributes(g,'pos')
+    nx.draw(g, pos = posicions, with_labels=True, node_size=20, node_color='lightblue', edge_color='gray')
+    plt.show()
 
 
 def plot(g: CityGraph, filename: str) -> None:
@@ -158,7 +183,14 @@ def plot_path(g: CityGraph, p: Path, filename: str) -> None:
     ...
 
 
+def print_osmnx_graph(g: OsmnxGraph) -> None:
+    street_graph_projected = ox.project_graph(g)
+    ox.plot_graph(street_graph_projected)
+
+
+
 try:
+    raise Exception
     c = load_osmnx_graph('prova.pickle')
     print(type(c))
     b = get_buses_graph()
@@ -170,16 +202,16 @@ except Exception:
     print(type(b))
 
 
+
+input('press enter to continu')
+
 city = build_city_graph(c, b)
 print(type(city))
 
-a = input()
-
-
-def show(g: CityGraph) -> None:
-    
-    nx.draw(g, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
-    plt.show()
-
+a = input('press enter to Show')
 
 show(city)
+
+input('show <egrnsfm')
+
+print_osmnx_graph(c)
