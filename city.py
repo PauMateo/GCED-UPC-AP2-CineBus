@@ -61,32 +61,6 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
     return g
 
 
-#                                                                  (Unknown)
-def nearest_node(g: OsmnxGraph, point: Coord) -> None | int:  # node id (int?)
-    '''Funció que retorna el node més proper al punt donat
-    al graf g. Retorna None si la distància és major a {?}'''
-    X, Y = point[0], point[1]
-    nodes, dist = ox.nearest_nodes(g, X, Y, return_dist=True)
-
-    if dist > 1000:  # assumint que torna distància en metres (en teoria si xd)
-        return None
-    if type(nodes) == list:
-        assert nodes[0] in g.nodes
-        return nodes[0]  # quansevol d'aquests nodes ja ens està bé!
-    return nodes
-
-
-def nearest_node2(g: OsmnxGraph, point: Coord) -> int:
-    '''Funció que retorna el node més proper al punt donat
-    al graf g. Retorna None si la distància és major a {?}'''
-    X, Y = point[0], point[1]
-    nodes = ox.nearest_nodes(g, X, Y)
-
-    if type(nodes) == list:
-        print(nodes)
-        return nodes[0]  # quansevol d'aquests nodes ja ens està bé!
-    return nodes  # type: ignore
-
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Retorna un graf fusió de g1 i g2'''
@@ -107,7 +81,6 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
             if u != v:
                 city.add_edge(u, v, **eattr)
 
-     # Parada: Cruilla
 
     print('checkpoint 1')
 
@@ -136,8 +109,6 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     for edge in g2.edges():
         #  assert g2.nodes[edge]['tipus'] == 'Bus'
         u, v = edge
-        if u == v:
-            continue
         i = nearest_nodes[u]
         j = nearest_nodes[v]
         dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
@@ -168,14 +139,23 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 def show(g: CityGraph) -> None:
     '''Mostra g de forma interactiva en una finestra'''
     posicions = nx.get_node_attributes(g,'pos')
-    nx.draw(g, pos = posicions, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
+    nx.draw(g, pos=posicions, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
     plt.show()
 
 
 def plot(g: CityGraph, filename: str) -> None:
     '''Desa g com una imatge amb el mapa de la
     cuitat de fons en l'arxiu filename'''
-    ...
+    city_map = StaticMap(3500, 3500)
+    for pos in nx.get_node_attributes(g, 'pos').values():
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+    for edge in g.edges:
+        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
+        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
+        city_map.add_line(Line([coord_1, coord_2], "blue", 2))
+
+    image = city_map.render()
+    image.save(filename)
 
 
 def plot_path(g: CityGraph, p: Path, filename: str) -> None:
@@ -209,9 +189,8 @@ city = build_city_graph(c, b)
 print(type(city))
 
 a = input('press enter to Show')
-
 show(city)
 
 input('show <egrnsfm')
 
-print_osmnx_graph(c)
+plot(city, "city_graph.png")
