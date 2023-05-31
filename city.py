@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import osmnx as ox
 import pickle
 import networkx as nx
-import buses
+from buses import *
 
 Coord: TypeAlias = tuple[float, float]   # (latitude, longitude
 CityGraph: TypeAlias = nx.Graph
@@ -25,37 +25,9 @@ def get_osmnx_graph() -> OsmnxGraph:
     '''Funció que obte i retorna el graf
     dels carrers de Barcelona'''
 
-    graph = ox.graph_from_place("Barcelona",
-                                network_type='walk',
-                                simplify=True)
-
-    new = nx.MultiDiGraph()
-
-    for u, nbrsdict in graph.adjacency():
-        new.add_node(u)
-        # for each adjacent node v and its (u, v) edges' information ...
-        for v, edgesdict in nbrsdict.items():
-            new.add_node(v)
-            # osmnx graphs are multigraphs, but we will just consider their
-            # first edge
-            # eattr contains the attributes of the first edge
-            eattr = edgesdict[0]
-            # we remove geometry information from eattr because we don't need
-            # it and take a lot of space
-            if 'geometry' in eattr:
-                del (eattr['geometry'])
-            new.add_edge(u, v, **eattr)
-
-    return new
-
-
-def get_osmnx_graph2() -> OsmnxGraph:  # funciona? xddd
-    '''Funció que obte i retorna el graf
-    dels carrers de Barcelona'''
-
-    graph = ox.graph_from_place("Barcelona",
-                                network_type='walk',
-                                simplify=True)
+    graph: OsmnxGraph = ox.graph_from_place("Barcelona",
+                                            network_type='walk',
+                                            simplify=True)  # type: ignore
 
     for u, v, key, geom in graph.edges(data="geometry", keys=True):
         if geom is not None:
@@ -87,9 +59,8 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
     assert isinstance(g, OsmnxGraph)
     return g
 
+
 #                                                                  (Unknown)
-
-
 def nearest_node(g: OsmnxGraph, point: Coord) -> None | int:  # node id (int?)
     '''Funció que retorna el node més proper al punt donat
     al graf g. Retorna None si la distància és major a {?}'''
@@ -103,13 +74,48 @@ def nearest_node(g: OsmnxGraph, point: Coord) -> None | int:  # node id (int?)
     return nodes
 
 
+def nearest_node2(g: OsmnxGraph, point: Coord) -> tuple[int, float | int]:
+    '''Funció que retorna el node més proper al punt donat
+    al graf g. Retorna None si la distància és major a {?}'''
+    X, Y = point[0], point[1]
+    nodes, dist = ox.nearest_nodes(g, X, Y, return_dist=True)
+
+    if type(nodes) == list:
+        return nodes[0], dist  # quansevol d'aquests nodes ja ens està bé!
+    return nodes, dist
+
+
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Retorna un graf fusió de g1 i g2'''
-    city: CityGraph = g1
-
+    city: CityGraph = nx.Graph()
     # add cinemas here?
 
-    for 
+    for u, nbrsdict in g1.adjacency():
+        city.add_node(u)
+        city.nodes[u][''] = 'Cruilla'
+        # for each adjacent node v and its (u, v) edges' information ...
+        for v, edgesdict in nbrsdict.items():
+            city.add_node(v)
+            city.nodes[v]['class'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
+
+            eattr = edgesdict[0]
+
+            city.add_edge(u, v, **eattr)
+
+    for u, nbrsdict in g2.adjacency():
+        g2.nodes[u]['class'] = 'Parada'
+        city.add_node(u)
+        for v, edge in nbrsdict.items():
+            g2.nodes[u]['class'] = 'Parada'
+            city.add_node(v)
+
+            i = nearest_node(g1, u[Coord])
+            j = nearest_node(g1, v[Coord])
+            dist = ox.shortest_path(g1, i, j, weight='weight') / 3
+            #  attr = {"weight": dist}
+            city.add_edge(u, v, weight=dist)  # **attr
+
+    return city
 
 
 def show(g: CityGraph) -> None:
@@ -123,12 +129,10 @@ def plot(g: CityGraph, filename: str) -> None:
     ...
 
 
-#  def plot_path(g: CityGraph, p: Path, filename: str, ...) -> None:
+def plot_path(g: CityGraph, p: Path, filename: str, ...) -> None:
     '''Mostra el camí p en l'arxiu filename'''
     ...
 
 
 g = get_osmnx_graph()
 print(type(g))
-h = get_osmnx_graph2()
-print(type(h))
