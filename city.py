@@ -21,6 +21,9 @@ class Path:
     source: int
     dest: int
     path: list[int]
+    path_graph: nx.Graph
+    
+
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -47,8 +50,28 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
     dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0] , return_dist=True)
     assert dist_src < 10000 and dist_dst < 10000
     shortest_path = nx.shortest_path(g, src_node, dst_node, weight='length', method='dijkstra')
-    path: Path = Path(src_node, dst_node, shortest_path[1:-1])
+    p = build_path_graph(src_node, dst_node, shortest_path, g)
+    path: Path = Path(src_node, dst_node, shortest_path[1:-1], p)
     return path
+
+
+def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
+    
+    path_graph: nx.Graph = nx.Graph()
+    path_graph.add_node(src, **g.nodes[src])
+    path_graph.add_node(dest, **g.nodes[dest])
+    for node in path:
+        path_graph.add_node(node, **g.nodes[node])
+
+    node_ant = dest
+    for node in path_graph.nodes:
+        attr = g.edges[node_ant][node]
+        path_graph.add_edge(node_ant, node, **attr)
+        node_ant = node
+    attr = g.edges[node_ant][dest]
+    path_graph.add_edge(node_ant, dest, **attr)
+
+    return path_graph
 
 
 def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
@@ -165,9 +188,18 @@ def plot(g: CityGraph, filename: str) -> None:
     image.save(filename)
 
 
-def plot_path(g: CityGraph, p: Path, filename: str) -> None:
+def plot_path(p: Path, filename: str) -> None:  #hem tret paràmetre g: CityGraph
     '''Mostra el camí p en l'arxiu filename'''
-    ...
+    p.path_graph = StaticMap(3500, 3500)
+    for pos in nx.get_node_attributes(g, 'pos').values():
+        p.path_graph.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+    for edge in g.edges:
+        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
+        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
+        p.path_graph.add_line(Line([coord_1, coord_2], "blue", 2))
+
+    image = p.path_graph.render()
+    image.save(filename)
 
 
 def print_osmnx_graph(g: OsmnxGraph) -> None:
@@ -177,7 +209,6 @@ def print_osmnx_graph(g: OsmnxGraph) -> None:
 
 
 try:
-    raise Exception
     c = load_osmnx_graph('prova.pickle')
     print(type(c))
     b = get_buses_graph()
@@ -193,7 +224,6 @@ except Exception:
 input('press enter to continu')
 
 city = build_city_graph(c, b)
-print(type(city))
-for u,v, k in city.edges(data=True):
-    if "Bus" in k.values():
-        print(k)
+show(city)
+p=(find_path(c,city, (41.40461, 2.080503), (41.41359, 2.079825)))
+plot_path(p, "plot_plath.png")
