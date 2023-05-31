@@ -2,8 +2,7 @@ from typing import TypeAlias, Any
 import networkx as nx
 import requests
 import matplotlib.pyplot as plt
-from staticmap import *
-from PIL import Image
+from staticmap import Line, CircleMarker, StaticMap
 
 
 BusesGraph: TypeAlias = nx.Graph
@@ -61,7 +60,6 @@ def get_buses_graph() -> BusesGraph:
     return Buses
 
 
-
 def show(g: BusesGraph) -> None:
      
     print(g.nodes["003402"], g.nodes["001409"], g.edges["003402", "001409"])
@@ -69,59 +67,30 @@ def show(g: BusesGraph) -> None:
     nx.draw(g, pos = posicions, with_labels=False, node_size = 20, node_color='lightblue', edge_color='gray')
     plt.show()
 
-def paint_nodes(g: BusesGraph, m: StaticMap) -> None:
-    """Paints all the nodes from the graph g in the
-    StaticMap m with the color red"""
-
-    for index, node in g.nodes(data=True):
-        coord = (node['pos'])
-        marker_node = CircleMarker(coord, 'white', 2)
-        m.add_marker(marker_node)
-
-
-def paint_edges(g: BusesGraph, m: StaticMap) -> None:
-    """Paints all the edges from the graph g in the
-    StaticMap m with the color blue"""
-
-    for n1 in g.edges(data=True):
-        coord = (g.nodes[n1[0]]['pos'], g.nodes[n1[1]]['pos'])
-        line = Line(coord, 'blue', 5)
-        m.add_line(line)
 
 def plot(g: BusesGraph, nom_fitxer: str) -> None:
-    """
-    # we get the openstreetmap to be the background
-    url: str = 'https://www.openstreetmap.org/#map=12/41.3997/2.1664'
-    m: StaticMap = StaticMap(1000, 1000, url_template=url)
-
-    paint_nodes(g, m)
-    paint_edges(g, m)
-
-    image = m.render()
-    image.save(nom_fitxer, quality=1000)
-    """
+    
     """
     :param g: a graph of the metro of the city
-    :param filename: a path and name to save the image
-    :effect: an image of g will be saved in filename
+    :param nom_fitxer: a path and name to save the image
     """
-
-    metro_map = staticmap.StaticMap(2000, 2000)
-    for node in g.nodes:
-        metro_map.add_marker(staticmap.CircleMarker(g.nodes[node]['pos'], "red", 10))
-    for edge in g.edges:
-        metro_map.add_line(staticmap.Line(g.nodes[[edge[0]]["pos"], g.nodes[edge[1]]["pos"]],
-                                          "blue", 5))
-    image = metro_map.render()
-    image.save(nom_fitxer)
     
+    buses_map = StaticMap(3500, 3500)
+    for pos in nx.get_node_attributes(g, 'pos').values():
+        buses_map.add_marker(CircleMarker((pos[1], pos[0]), "red", 6))
+    for edge in g.edges:
+        coord_1 = (g.nodes[edge[0]]['pos'][1], g.nodes[edge[0]]['pos'][0])
+        coord_2 = (g.nodes[edge[1]]['pos'][1], g.nodes[edge[1]]['pos'][0])
+        buses_map.add_line(Line([coord_1, coord_2],"blue", 2))
 
+    image = buses_map.render()
+    image.save(nom_fitxer)
 
 
 def main():
     graph = get_buses_graph()
-    """plot(graph, "buses_graph.png")"""
-    show(graph)
+    plot(graph,"buses_graph.png")
+    """show(graph)"""
     
 
 if __name__ == "__main__":
