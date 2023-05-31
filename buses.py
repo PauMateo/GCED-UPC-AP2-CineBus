@@ -106,7 +106,7 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
 def main():
     graph = get_buses_graph()
     plot(graph, "buses_graph.png")
-    """show(graph)"""
+    show(graph)
 
 
 if __name__ == "__main__":
