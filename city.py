@@ -18,7 +18,9 @@ class Edge:
 
 @dataclass
 class Path:
-    ...
+    source: int
+    dest: int
+    path: list[int]
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -41,7 +43,12 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
               src: Coord, dst: Coord) -> Path:
     '''Retorna el camí (Path) més curt entre
     els punts src i dst. '''
-    ...
+    src_node, dist_src= ox.nearest_nodes(ox_g, src[1], src[0] , return_dist=True)
+    dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0] , return_dist=True)
+    assert dist_src < 10000 and dist_dst < 10000
+    shortest_path = nx.shortest_path(g, src_node, dst_node, weight='length', method='dijkstra')
+    path: Path = Path(src_node, dst_node, shortest_path[1:-1])
+    return path
 
 
 def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
@@ -79,7 +86,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
             eattr = edgesdict[0]
             if u != v:
-                city.add_edge(u, v, **eattr)
+                city.add_edge(u, v, **eattr, tipus='carrer')
 
 
     print('checkpoint 1')
@@ -106,15 +113,15 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     assert len(parada_cruilla) == len(nearest_nodes)
     print('checkpoint 2')
 
-    for edge in g2.edges():
+    for u, v, k in g2.edges(data=True):
         #  assert g2.nodes[edge]['tipus'] == 'Bus'
-        u, v = edge
+        attr = k
         i = nearest_nodes[u]
         j = nearest_nodes[v]
         dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
-        city.add_edge(u, v, weight=dist)  # **attr
-        city.add_edge(i, u, weight=0)
-        city.add_edge(j, v, weight=0)
+        city.add_edge(u, v, **attr, length=dist)  # **attr
+        city.add_edge(i, u, length=0)
+        city.add_edge(j, v, length=0)
 
     '''for u, nbrsdict in g2.adjacency():
         assert g2.nodes[u]['tipus'] == 'Parada'
@@ -187,10 +194,6 @@ input('press enter to continu')
 
 city = build_city_graph(c, b)
 print(type(city))
-
-a = input('press enter to Show')
-show(city)
-
-input('show <egrnsfm')
-
-plot(city, "city_graph.png")
+for u,v, k in city.edges(data=True):
+    if "Bus" in k.values():
+        print(k)
