@@ -92,26 +92,24 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     for u, nbrsdict in g1.adjacency():
         city.add_node(u)
-        city.nodes[u][''] = 'Cruilla'
+        city.nodes[u]['tipus'] = 'Cruilla'
         # for each adjacent node v and its (u, v) edges' information ...
         for v, edgesdict in nbrsdict.items():
             city.add_node(v)
-            city.nodes[v]['class'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
+            city.nodes[v]['tipus'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
 
             eattr = edgesdict[0]
-
             city.add_edge(u, v, **eattr)
 
     for u, nbrsdict in g2.adjacency():
-        g2.nodes[u]['class'] = 'Parada'
+        assert g2.nodes[u]['tipus'] == 'Parada'
         city.add_node(u)
         for v, edge in nbrsdict.items():
-            g2.nodes[u]['class'] = 'Parada'
             city.add_node(v)
 
-            i = nearest_node(g1, u[Coord])
-            j = nearest_node(g1, v[Coord])
-            dist = ox.shortest_path(g1, i, j, weight='weight') / 3
+            i = nearest_node2(g1, g2.nodes[u]['pos'])
+            j = nearest_node2(g1, g2.nodes[v]['pos'])
+            dist = ox.shortest_path(g1, i, j, weight='length') / 3
             #  attr = {"weight": dist}
             city.add_edge(u, v, weight=dist)  # **attr
 
@@ -129,10 +127,8 @@ def plot(g: CityGraph, filename: str) -> None:
     ...
 
 
-def plot_path(g: CityGraph, p: Path, filename: str, ...) -> None:
+def plot_path(g: CityGraph, p: Path, filename: str) -> None:
     '''Mostra el camí p en l'arxiu filename'''
     ...
 
 
-g = get_osmnx_graph()
-print(type(g))
