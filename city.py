@@ -168,7 +168,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 def show(g: CityGraph) -> None:
     '''Mostra g de forma interactiva en una finestra'''
     posicions = nx.get_node_attributes(g,'pos')
-    nx.draw(g, pos = posicions, with_labels=True, node_size=20, node_color='lightblue', edge_color='gray')
+    nx.draw(g, pos = posicions, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
     plt.show()
 
 
