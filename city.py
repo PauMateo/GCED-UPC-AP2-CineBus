@@ -70,19 +70,21 @@ def nearest_node(g: OsmnxGraph, point: Coord) -> None | int:  # node id (int?)
     if dist > 1000:  # assumint que torna distància en metres (en teoria si xd)
         return None
     if type(nodes) == list:
+        assert nodes[0] in g.nodes
         return nodes[0]  # quansevol d'aquests nodes ja ens està bé!
     return nodes
 
 
-def nearest_node2(g: OsmnxGraph, point: Coord) -> tuple[int, float | int]:
+def nearest_node2(g: OsmnxGraph, point: Coord) -> int:
     '''Funció que retorna el node més proper al punt donat
     al graf g. Retorna None si la distància és major a {?}'''
     X, Y = point[0], point[1]
     nodes, dist = ox.nearest_nodes(g, X, Y, return_dist=True)
 
     if type(nodes) == list:
+        print(nodes)
         return nodes[0], dist  # quansevol d'aquests nodes ja ens està bé!
-    return nodes, dist
+    return nodes
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
@@ -101,17 +103,41 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
             eattr = edgesdict[0]
             city.add_edge(u, v, **eattr)
 
-    for u, nbrsdict in g2.adjacency():
+    nearest_nodes: dict[int, int] = {}  # Parada: Cruilla
+
+    print('checkpoint')
+
+    for u in g2.nodes():
         assert g2.nodes[u]['tipus'] == 'Parada'
         city.add_node(u)
+        nearest_nodes[u] = nearest_node2(g1, g2.nodes[u]['pos'])
+
+    for edge in g2.edges():
+        assert g2.nodes[edge]['tipus'] == 'Bus'
+        u, v = edge
+        i = nearest_nodes[u]
+        j = nearest_nodes[v]
+        dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
+        city.add_edge(u, v, weight=dist)  # **attr
+        city.add_edge(i, u, weight=0)
+        city.add_edge(j, v, weight=0)
+
+    '''for u, nbrsdict in g2.adjacency():
+        assert g2.nodes[u]['tipus'] == 'Parada'
+        city.add_node(u)
+
+        if u not in nearest_nodes: pass
         for v, edge in nbrsdict.items():
             city.add_node(v)
 
+            
             i = nearest_node2(g1, g2.nodes[u]['pos'])
             j = nearest_node2(g1, g2.nodes[v]['pos'])
-            dist = ox.shortest_path(g1, i, j, weight='length') / 3
+            dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
             #  attr = {"weight": dist}
             city.add_edge(u, v, weight=dist)  # **attr
+            city.add_edge(i, u, weight=0)
+            city.add_edge(j, v, weight=0)'''
 
     return city
 
@@ -132,3 +158,28 @@ def plot_path(g: CityGraph, p: Path, filename: str) -> None:
     ...
 
 
+try:
+    c = load_osmnx_graph('prova.pickle')
+    print(type(c))
+    b = get_buses_graph()
+    print(type(b))
+except Exception:
+    c = get_osmnx_graph()
+    save_osmnx_graph(c, 'prova.pickle')
+    b = get_buses_graph()
+    print(type(b))
+
+
+city = build_city_graph(c, b)
+print(type(city))
+
+a = input()
+
+
+def show(g: CityGraph) -> None:
+    
+    nx.draw(g, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
+    plt.show()
+
+
+show(city)
