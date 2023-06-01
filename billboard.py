@@ -54,7 +54,7 @@ class Billboard:
         self.cinemas = c
         self.projections = p
         self.poss_filters = ['genre', 'director', 'film', 'cinema',
-                             'time', 'duration', 'language']
+                             'time', 'duration', 'language', 'city']
         self.genres = g
 
     def filter(self, filters: dict[str, str]) -> list[Projection]:
@@ -80,9 +80,6 @@ class Billboard:
 
         except Exception:
             raise ValueError
-            '''e = traceback.format_exc()
-            print(f'\n \n {e} \n \n \n')
-            raise Exception('...')'''
 
     def _filter_time(self, x: Projection, filter: str) -> bool:
         '''Aplica per separat el filtre d'horari a una
@@ -123,6 +120,10 @@ class Billboard:
     def _filter_director(self, x: Projection, filter: str) -> bool:
         ''''''
         return x.language == filter
+
+    def _filter_city(self, x: Projection, filter: str) -> bool:
+
+        return filter in x.cinema.address
 
     def _apply_filter(self, x: Projection, flt: tuple[str, str]) -> bool:
         '''Aplica el filtre donat a la projecció x. Retorna True si
