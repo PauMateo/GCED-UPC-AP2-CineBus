@@ -1,18 +1,30 @@
 import billboard
 import os
 from rich.table import Table
-import rich.console
 from rich.panel import Panel
 from rich import box
-from loaders import TextLoader
 import city
-from genres import genres as film_genres
+import time
+from loaders import TextLoader
+import rich.console
+#  from constants import genres as film_genres
+from constants import film_genres
+from PIL import Image
+
+'''console = rich.console.Console()
+Bus: city.BusesGraph
+Streets: city.OsmnxGraph
+City: city.CityGraph
+Bboard: billboard.Billboard'''
 
 loader = TextLoader(colour='yellow',
-                    text='Carregant',
-                    animation='bounce')
-
+                    text='Loading',
+                    animation='loop')
 console = rich.console.Console()
+Bus: city.BusesGraph
+Streets: city.OsmnxGraph
+City: city.CityGraph
+Bboard: billboard.Billboard
 
 
 def clear() -> None:
@@ -28,7 +40,8 @@ def plot_billboard_menu() -> None:
          '5 - Filter \n' + \
          '0 - Return'
 
-    console.print(Panel(options, title="[magenta]Options", expand=False))
+    console.print(Panel(options, title="[magenta]Billboard options",
+                        expand=False))
     return next_plot(4, actual=1, options=[i for i in range(6)])
 
 
@@ -92,13 +105,14 @@ def plot_filter() -> None:
 
     console.print(Panel(  # plot filter types available
         '[cyan]' +
-        'genre ------ genre = name_genre\n\n' +
+        'genre ------ genre = name_genre\n' +
         'director --- director = name_director\n' +
         'film ------- film = film_title\n' +
         'cinema ----- cinema = cinema_name\n' +
         'time ------- time = hh:mm - hh:mm\n' +
         'duration --- duration = duration_minutes\n' +
-        'language --- language = V.O. / Spanish',
+        'language --- language = V.O. / Spanish\n' +
+        'city ------- city = Name_city',
         title="[magenta]Filter types---Specific format",
         expand=False))
 
@@ -152,13 +166,38 @@ def plot_filter() -> None:
 
 
 def plot_maps_menu() -> None:
-    ...
+    options = '[cyan]1 - Bus map\n' + \
+                    '2 - City map\n' + \
+                    '0 - Return'
+
+    console.print(Panel(options, title="[magenta]Maps", expand=False))
+    return next_plot(10, 2, [0, 1, 2])
 
 
-def plot_bus_map(): ...
+def plot_bus_map() -> None:
+    try:
+        image = Image.open('bus_map.png')
+    except Exception:
+        loader.start()
+        city.plot(Bus, 'bus_map.png')
+        image = Image.open('bus_map.png')
+        loader.stop()
+    image.show()
+
+    return plot_maps_menu()
 
 
-def plot_city_map(): ...
+def plot_city_map():
+    try:
+        raise Exception
+        image = Image.open('city_map.png')
+    except Exception:
+        loader.start()
+        city.plot(City, 'city_map.png')
+        image = Image.open('city_map.png')
+        loader.stop()
+    image.show()
+    return plot_maps_menu()
 
 
 def plot_watch() -> None:
@@ -168,6 +207,10 @@ def plot_watch() -> None:
 def next_plot(shift: int,
               actual: int = -1,
               options: list[int] = []) -> None:
+    '''funció que retorna el plot corresponent a la crida. Shift és només
+    per correspondre el nombre que entre l'usuari amb els "identificadors"
+    de cada plot. Actual és l'identificador de la funció que ha fet la crida.
+    Options són els nombres que l'usuari pot donar. '''
 
     if len(options) == 0:
         num = actual
@@ -184,6 +227,7 @@ def next_plot(shift: int,
             console.print('[red]Sorry, something went wrong!😭💀🤨')
             return next_plot(0, actual)
         if num not in options:
+            clear()
             console.print("[red]This option doesen't exist!😡")
             return next_plot(0, actual)
     num += shift
@@ -222,16 +266,51 @@ def next_plot(shift: int,
 
 def plot_main_menu() -> None:
     options = '[cyan]1 - Billboard\n' + \
-         '2 - Maps \n' + \
-         '3 - Watch \n' + \
-         '0 - Exit'
+                    '2 - Maps \n' + \
+                    '3 - Watch \n' + \
+                    '0 - Exit'
 
     console.print(Panel(options, title="[magenta]Options", expand=False))
     return next_plot(0, 15, [i for i in range(4)])
 
 
+def get_data() -> None:
+    '''Descarrega les dades necessàries per
+    executar el programa.'''
+    Bboard = billboard.read()
+    Bboard.genres = film_genres  # (generes amb emojis)
+    Bus = city.get_buses_graph()
+    try:
+        Streets = city.load_osmnx_graph('osmnx_Bcn.pickle')
+    except Exception:
+        Streets = city.get_osmnx_graph()
+        city.save_osmnx_graph(Streets, 'osmnx_Bcn.pickle')
+    City = city.build_city_graph(Streets, Bus)
+
+
+def init_program() -> None:
+    clear()
+    loader.start()
+    get_data()
+    loader.stop()
+    time.sleep(2)
+    clear()
+    plot_main_menu()
+
+
 if __name__ == "__main__":
     clear()
-    Bboard: billboard.Billboard = billboard.read()
+    loader.start()
+    Bboard = billboard.read()
     Bboard.genres = film_genres  # (generes amb emojis)
+    Bus = city.get_buses_graph()
+    try:
+        Streets = city.load_osmnx_graph('osmnx_Bcn.pickle')
+    except Exception:
+        Streets = city.get_osmnx_graph()
+        city.save_osmnx_graph(Streets, 'osmnx_Bcn.pickle')
+    City = city.build_city_graph(Streets, Bus)
+    loader.stop()
+    time.sleep(2)
+    clear()
     plot_main_menu()
