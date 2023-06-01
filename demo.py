@@ -1,10 +1,18 @@
-#  import city
 import billboard
 import os
-import rich.table as rtab
-import rich.console as rcons
-import rich.panel as rpan
+from rich.table import Table
+import rich.console
+from rich.panel import Panel
 from rich import box
+from loaders import TextLoader
+import city
+from genres import genres as film_genres
+
+loader = TextLoader(colour='yellow',
+                    text='Carregant',
+                    animation='bounce')
+
+console = rich.console.Console()
 
 
 def clear() -> None:
@@ -12,10 +20,21 @@ def clear() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')  # clear terminal
 
 
-def plot_billboard() -> None:
-    table = rtab.Table(title='BILLBOARD', border_style='blue3',
-                       safe_box=False, box=box.ROUNDED)
-    console = rcons.Console()
+def plot_billboard_menu() -> None:
+    options = '[cyan]1 - Plot full billboard\n' + \
+         '2 - Cinemas \n' + \
+         '3 - Films \n' + \
+         '4 - Genres \n' + \
+         '5 - Filter \n' + \
+         '0 - Return'
+
+    console.print(Panel(options, title="[magenta]Options", expand=False))
+    return next_plot(4, 5, [i for i in range(6)])
+
+
+def plot_full_billboard() -> None:
+    table = Table(title='BILLBOARD', border_style='blue3',
+                  safe_box=False, box=box.ROUNDED)
 
     table.add_column("Film🎥", justify="center", style="cyan", no_wrap=True)
     table.add_column("Cinema🍿", justify='center', style="magenta")
@@ -32,86 +51,46 @@ def plot_billboard() -> None:
             p.language)
 
     console.print(table)
-    main()
+    return plot_billboard_menu()
 
 
-def plot_options() -> None:
-    op = '[cyan]1 - Plot Billboard\n' + \
-         '2 - Info & filter\n' + \
-         '3 - Exit'
-
-    console = rcons.Console()
-    console.print(rpan.Panel(op, title="[magenta]Options", expand=False))
-
-
-def plot_filter_options() -> None:
-
-    console = rcons.Console()
+def plot_cinemas() -> None:
+    op: str = ''
+    for c in Bboard.cinemas:
+        op = op + c.name + '\n'
     console.print(
-        rpan.Panel('[red]' +
-                   '1 - Enter filter\n' +
-                   '2 - See genres \n' +
-                   '3 - See films\n' +
-                   '4 - See cinemas\n' +
-                   '5 - Return',
-                   title="[magenta]Filter options",
-                   expand=False,
-                   border_style='blue3'))
-
-    try:
-        num = int(input('Enter option: '))
-    except ValueError:
-        clear()
-        console.print('[red] You must introduce a number!😡💀')
-        return plot_filter_options()
-
-    clear()
-    if num == 1:
-        return plot_filter_billboard()
-
-    elif num == 2:
-        op: str = ''
-        for g in Bboard.genres:
-            op = op + g + '\n'
-        console.print(rpan.Panel(
-            op[:-1],
-            title="[magenta]Genres",
-            expand=False, safe_box=True))
-        return plot_filter_options()
-
-    elif num == 3:
-        op: str = ''
-        for f in Bboard.films:
-            op = op + f.title + '\n'
-        console.print(rpan.Panel(
-            op[:-1], title="[magenta]Films", expand=False))
-        return plot_filter_options()
-
-    elif num == 4:
-        op: str = ''
-        for c in Bboard.cinemas:
-            op = op + c.name + '\n'
-        console.print(
-            rpan.Panel(op[:-1], title="[magenta]Cinemas", expand=False))
-        return plot_filter_options()
-
-    elif num == 5:
-        return main()
-    else:
-        clear()
-        console.print("[red]This option doesen't exist!😡")
-        return plot_filter_options()
+        Panel(op[:-1], title="[magenta]Cinemas", expand=False))
+    return plot_billboard_menu()
 
 
-def plot_filter_billboard() -> None:
+def plot_films() -> None:
+    op: str = ''
+    for f in Bboard.films:
+        op = op + f.title + '\n'
+    console.print(Panel(
+        op[:-1], title="[magenta]Films", expand=False))
+    return plot_billboard_menu()
+
+
+def plot_genres() -> None:
+    op: str = ''
+    for g in Bboard.genres:
+        op = op + g + '\n'
+    console.print(Panel(
+        op[:-1],
+        title="[magenta]Genres",
+        expand=False, safe_box=True))
+    return plot_billboard_menu()
+
+
+def plot_filter() -> None:
     '''Llegeix un filtre, l'aplica a la
      cartellera i la mostra.'''
-    console = rcons.Console()
     # op: str = ''
     '''for f in Bboard.poss_filters:
         op = op + f + '\n' --> ['cyan]{op[:-1]} '''
 
-    console.print(rpan.Panel(  # plot filter types available
+    console.print(Panel(  # plot filter types available
         '[cyan]' +
         'genre ------ genre = name_genre\n\n' +
         'director --- director = name_director\n' +
@@ -129,7 +108,7 @@ def plot_filter_billboard() -> None:
 
     clear()
     if f == '0':  # go back
-        return plot_filter_options()
+        return plot_billboard_menu()
 
     filters: dict[str, str] = {}
     try:
@@ -140,12 +119,11 @@ def plot_filter_billboard() -> None:
             filters[k] = v
     except Exception:
         console.print('[red]Wrong format!😓')
-        return plot_filter_billboard()
+        return plot_filter()
 
-    table = rtab.Table(title=f'BILLBOARD \n filters: {f}',
-                       border_style='blue3',
-                       safe_box=True, box=box.ROUNDED)
-    console = rcons.Console()
+    table = Table(title=f'BILLBOARD \n filters: {f}',
+                  border_style='blue3',
+                  safe_box=True, box=box.ROUNDED)
 
     table.add_column("Film🎥", justify="center", style="cyan")
     table.add_column("Cinema🍿", justify='center', style="magenta")
@@ -158,11 +136,11 @@ def plot_filter_billboard() -> None:
     except Exception:
         console.print(
             "[red]Sorry, couldn't apply this filter😥💀. See filter options:")
-        return plot_filter_billboard()
+        return plot_filter()
     if len(filtered_billboard) == 0:
         console.print(
             '[red]No movies found with this filter. See filter options:')
-        return plot_filter_billboard()
+        return plot_filter()
     for p in filtered_billboard:
         table.add_row(
             p.film.title,
@@ -172,67 +150,82 @@ def plot_filter_billboard() -> None:
             p.language)
     console.print(table)
 
-    main()
+
+def plot_maps_menu() -> None:
+    ...
 
 
-def next_plot(num: int) -> None:
-    console = rcons.Console()
-    if num == 1:
-        plot_billboard()
-    elif num == 2:
-        plot_filter_options()
-    elif num == 3:
-        console = rcons.Console()
-        console.print(rpan.Panel(f'[green]See you soon!👋😘',
-                                 expand=False,
-                                 border_style='green3'))
-        return None
-    else:
-        clear()
-        console.print("[red]This option doesen't exist!😡")
-        return main()
+def plot_bus_map(): ...
 
 
-def main():
-    plot_options()
+def plot_city_map(): ...
 
+
+def plot_watch() -> None:
+    ...
+
+
+def next_plot(shift: int, actual: int, options: list[int]) -> None:
     try:
         num = int(input('Enter option number: '))
         clear()  # clear terminal
-        next_plot(num)
     except ValueError:
         clear()
-        print('You must introduce a number!😡💀')
-        main()
+        console.print('[red]You must introduce a number!😡💀')
+        return next_plot(0, actual, [actual])
     except Exception:
         clear()
-        print('Sorry, something went wrong!😭💀🤨')
-        main()
+        console.print('[red]Sorry, something went wrong!😭💀🤨')
+        return next_plot(0, actual, [actual])
+    if num not in options:
+        console.print("[red]This option doesen't exist!😡")
+        return next_plot(0, actual, [actual])
+    num += shift
+
+    if num == 0:
+        console.print(Panel(f'[green]See you soon!👋😘',
+                      expand=False,
+                      border_style='green3'))
+    if num in [4, 10, 13]:
+        return plot_main_menu()  # 'Return option'
+    if num == 1:
+        return plot_billboard_menu()
+    if num == 2:
+        return plot_maps_menu()
+    if num == 3:
+        return plot_watch()
+    if num == 5:
+        return plot_full_billboard()
+    if num == 6:
+        return plot_cinemas()
+    if num == 7:
+        return plot_films()
+    if num == 8:
+        return plot_genres()
+    if num == 9:
+        return plot_filter()
+    if num == 11:
+        return plot_bus_map()
+    if num == 12:
+        return plot_city_map()
+    if num == 14:
+        return plot_watch()
+    if num == 15:
+        return plot_main_menu()
 
 
-genres = {"Romántico \U0001F339 \U0001F496",
-          "Western \U0001F920 \U0001F335 \U0001F40E",
-          "Biografía \U0001F4DC",
-          "Drama \U0001F494",
-          "Comedia dramática \U0001F604 \U0001F62D",
-          "Histórico \U0001F3FA \U0001F30F",
-          "Crimen \U0001F52A \U0001FA78 \U0001F480",
-          "Guerra \U0001F9E8",
-          "Suspense \U0001F575",
-          "Documental \U0001F418 \U0001F992",
-          "Aventura \U0001F30D \U0001F920",
-          "Ciencia ficción \U0001F680 \U0001F9EC",
-          "Terror \U0001F47B \U0001F62C",
-          "Erótico \U0001F525 \U0001F60F",
-          "Acción \U0001F4A5",
-          "Familia \U0001F46A",
-          "Fantasía \U0001F9D9 \U0001F3F0",
-          "Comedia \U0001F3AD \U0001F604",
-          "Judicial \U00002696 \U0001F3DB",
-          "Animación \U0000270F"}
+def plot_main_menu() -> None:
+    options = '[cyan]1 - Billboard\n' + \
+         '2 - Maps \n' + \
+         '3 - Watch \n' + \
+         '0 - Exit'
+
+    console.print(Panel(options, title="[magenta]Options", expand=False))
+    return next_plot(0, 15, [i for i in range(4)])
+
 
 if __name__ == "__main__":
-    Bboard: billboard.Billboard = billboard.read()
-    Bboard.genres = genres
     clear()
-    main()
+    Bboard: billboard.Billboard = billboard.read()
+    Bboard.genres = film_genres  # (generes amb emojis)
+    plot_main_menu()
