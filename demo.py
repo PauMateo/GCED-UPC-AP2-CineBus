@@ -29,7 +29,7 @@ def plot_billboard_menu() -> None:
          '0 - Return'
 
     console.print(Panel(options, title="[magenta]Options", expand=False))
-    return next_plot(4, 5, [i for i in range(6)])
+    return next_plot(4, actual=1, options=[i for i in range(6)])
 
 
 def plot_full_billboard() -> None:
@@ -165,21 +165,27 @@ def plot_watch() -> None:
     ...
 
 
-def next_plot(shift: int, actual: int, options: list[int]) -> None:
-    try:
-        num = int(input('Enter option number: '))
-        clear()  # clear terminal
-    except ValueError:
-        clear()
-        console.print('[red]You must introduce a number!😡💀')
-        return next_plot(0, actual, [actual])
-    except Exception:
-        clear()
-        console.print('[red]Sorry, something went wrong!😭💀🤨')
-        return next_plot(0, actual, [actual])
-    if num not in options:
-        console.print("[red]This option doesen't exist!😡")
-        return next_plot(0, actual, [actual])
+def next_plot(shift: int,
+              actual: int = -1,
+              options: list[int] = []) -> None:
+
+    if len(options) == 0:
+        num = actual
+    else:
+        try:
+            num = int(input('Enter option number: '))
+            clear()  # clear terminal
+        except ValueError:
+            clear()
+            console.print('[red]You must introduce a number!😡💀')
+            return next_plot(0, actual)
+        except Exception:
+            clear()
+            console.print('[red]Sorry, something went wrong!😭💀🤨')
+            return next_plot(0, actual)
+        if num not in options:
+            console.print("[red]This option doesen't exist!😡")
+            return next_plot(0, actual)
     num += shift
 
     if num == 0:
