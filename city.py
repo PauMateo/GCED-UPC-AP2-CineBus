@@ -46,8 +46,8 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
               src: Coord, dst: Coord) -> Path:
     '''Retorna el camí (Path) més curt entre
     els punts src i dst. '''
-    src_node, dist_src= ox.nearest_nodes(ox_g, src[1], src[0] , return_dist=True)
-    dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0] , return_dist=True)
+    src_node, dist_src= ox.nearest_nodes(ox_g, src[1], src[0], return_dist=True)
+    dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0], return_dist=True)
     assert dist_src < 10000 and dist_dst < 10000
     shortest_path = nx.shortest_path(g, src_node, dst_node, weight='length', method='dijkstra')
     p = build_path_graph(src_node, dst_node, shortest_path, g)
@@ -59,16 +59,16 @@ def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
     
     path_graph: nx.Graph = nx.Graph()
     path_graph.add_node(src, **g.nodes[src])
-    path_graph.add_node(dest, **g.nodes[dest])
+    path_graph.add_node(dest, **g.nodes[dest])  
     for node in path:
         path_graph.add_node(node, **g.nodes[node])
 
-    node_ant = dest
-    for node in path_graph.nodes:
-        attr = g.edges[node_ant][node]
+    node_ant = src
+    for node in path:
+        attr = g[str(node_ant)][str(node)]
         path_graph.add_edge(node_ant, node, **attr)
         node_ant = node
-    attr = g.edges[node_ant][dest]
+    attr = g[node_ant][dest]
     path_graph.add_edge(node_ant, dest, **attr)
 
     return path_graph
@@ -146,23 +146,6 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         city.add_edge(i, u, length=0)
         city.add_edge(j, v, length=0)
 
-    '''for u, nbrsdict in g2.adjacency():
-        assert g2.nodes[u]['tipus'] == 'Parada'
-        city.add_node(u)
-
-        if u not in nearest_nodes: pass
-        for v, edge in nbrsdict.items():
-            city.add_node(v)
-
-            
-            i = nearest_node2(g1, g2.nodes[u]['pos'])
-            j = nearest_node2(g1, g2.nodes[v]['pos'])
-            dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
-            #  attr = {"weight": dist}
-            city.add_edge(u, v, weight=dist)  # **attr
-            city.add_edge(i, u, weight=0)
-            city.add_edge(j, v, weight=0)'''
-
     return city
 
 
@@ -190,15 +173,16 @@ def plot(g: CityGraph, filename: str) -> None:
 
 def plot_path(p: Path, filename: str) -> None:  #hem tret paràmetre g: CityGraph
     '''Mostra el camí p en l'arxiu filename'''
-    p.path_graph = StaticMap(3500, 3500)
+    g = p.path_graph
+    city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        p.path_graph.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        p.path_graph.add_line(Line([coord_1, coord_2], "blue", 2))
+        city_map.add_line(Line([coord_1, coord_2], "blue", 2))
 
-    image = p.path_graph.render()
+    image = city_map.render()
     image.save(filename)
 
 
@@ -225,5 +209,8 @@ input('press enter to continu')
 
 city = build_city_graph(c, b)
 show(city)
-p=(find_path(c,city, (41.40461, 2.080503), (41.41359, 2.079825)))
-plot_path(p, "plot_plath.png")
+plot(city, "city_graph.png")
+"""show(city)"""
+"""p=find_path(c,city, (41.40461, 2.080503), (41.41359, 2.079825))"""
+"""print(city.get_edge_data(7212391973, 539787390))
+plot_path(p, "plot_plath.png")"""
