@@ -5,6 +5,7 @@ import osmnx as ox
 import pickle
 import networkx as nx
 from buses import *
+from haversine import haversine
 
 Coord: TypeAlias = tuple[float, float]   # (latitude, longitude
 CityGraph: TypeAlias = nx.Graph
@@ -22,8 +23,7 @@ class Path:
     dest: int
     path: list[int]
     path_graph: nx.Graph
-    
-
+    time: int  # segons
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -49,14 +49,21 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
     src_node, dist_src= ox.nearest_nodes(ox_g, src[1], src[0], return_dist=True)
     dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0], return_dist=True)
     assert dist_src < 10000 and dist_dst < 10000
-    shortest_path = nx.shortest_path(g, src_node, dst_node, weight='length', method='dijkstra')
-    p = build_path_graph(src_node, dst_node, shortest_path, g)
-    path: Path = Path(src_node, dst_node, shortest_path[1:-1], p)
+    shortest_path = nx.shortest_path(g, src_node, dst_node, weight='time', method='dijkstra')
+
+    time = 0
+    node_ant = shortest_path[0]
+    for node in shortest_path[1:]:
+        time += g[node_ant][node]['time']
+        node_ant = node
+
+    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
+    path: Path = Path(src_node, dst_node, shortest_path[1:-1], p, int(time))
     return path
 
 
 def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
-    
+
     path_graph: nx.Graph = nx.Graph()
     path_graph.add_node(src, **g.nodes[src])
     path_graph.add_node(dest, **g.nodes[dest])  
@@ -65,7 +72,7 @@ def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
 
     node_ant = src
     for node in path:
-        attr = g[str(node_ant)][str(node)]
+        attr = g.get_edge_data(node_ant, node)
         path_graph.add_edge(node_ant, node, **attr)
         node_ant = node
     attr = g[node_ant][dest]
@@ -91,7 +98,6 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
     return g
 
 
-
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Retorna un graf fusió de g1 i g2'''
     city: CityGraph = nx.Graph()
@@ -109,10 +115,9 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
             eattr = edgesdict[0]
             if u != v:
-                city.add_edge(u, v, **eattr, tipus='carrer')
-
-
-    print('checkpoint 1')
+                city.add_edge(u, v, **eattr,
+                              tipus='carrer',
+                              time=eattr['length']/1.5)
 
     nearest_nodes: dict[int, int] = {}
     list_x: list[float] = []
@@ -121,7 +126,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     for u in g2.nodes:
         assert g2.nodes[u]['tipus'] == 'Parada'
         attr = g2.nodes[u]
-        city.add_node(u, **attr)
+        city.add_node(int(u), **attr)
         list_x.append(g2.nodes[u]['pos'][0])  # ojo amb girar coordenades xd
         list_y.append(g2.nodes[u]['pos'][1])
 
@@ -129,22 +134,26 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
                                                    list_x,
                                                    list_y, return_dist=False)
 
-
     for i, u in enumerate(g2.nodes()):
         nearest_nodes[u] = parada_cruilla[i]
 
     assert len(parada_cruilla) == len(nearest_nodes)
-    print('checkpoint 2')
 
     for u, v, k in g2.edges(data=True):
         #  assert g2.nodes[edge]['tipus'] == 'Bus'
         attr = k
         i = nearest_nodes[u]
         j = nearest_nodes[v]
-        dist = nx.shortest_path_length(g1, i, j, weight='length') / 3
-        city.add_edge(u, v, **attr, length=dist)  # **attr
-        city.add_edge(i, u, length=0)
-        city.add_edge(j, v, length=0)
+        time = nx.shortest_path_length(g1, i, j, weight='length') / 8.5
+        city.add_edge(u, v, **attr, time=time)  # **attr
+
+        coord_i = g1.nodes[i]['y'], g1.nodes[i]['x']
+        coord_j = g1.nodes[j]['y'], g1.nodes[j]['x']
+        coord_u = g2.nodes[u]['pos'][1], g2.nodes[u]['pos'][0]
+        coord_v = g2.nodes[v]['pos'][1], g2.nodes[v]['pos'][0]
+
+        city.add_edge(i, u, time=haversine(coord_i, coord_u)/1.5)
+        city.add_edge(j, v, time=haversine(coord_j, coord_v)/1.5)
 
     return city
 
@@ -191,7 +200,6 @@ def print_osmnx_graph(g: OsmnxGraph) -> None:
     ox.plot_graph(street_graph_projected)
 
 
-
 try:
     c = load_osmnx_graph('prova.pickle')
     print(type(c))
@@ -204,13 +212,16 @@ except Exception:
     print(type(b))
 
 
-
-input('press enter to continu')
+input('press enter to continue')
 
 city = build_city_graph(c, b)
-show(city)
-plot(city, "city_graph.png")
-"""show(city)"""
-"""p=find_path(c,city, (41.40461, 2.080503), (41.41359, 2.079825))"""
-"""print(city.get_edge_data(7212391973, 539787390))
-plot_path(p, "plot_plath.png")"""
+
+input('find p:')
+p = find_path(c, city, (41.40461, 2.080503), (41.41359, 2.079825))
+input('Type nodes:')
+print(p)
+for node in p.path_graph:
+    print(p.path_graph.nodes[node])
+for u,v,k in p.path_graph.edges(data=True):
+    print(k)
+plot_path(p, "plot_plath.png")
