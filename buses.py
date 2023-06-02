@@ -44,8 +44,8 @@ def get_buses_graph() -> BusesGraph:
                     "tipus": "Parada",
                     "nom": parades["Nom"],
                     "pos": (
-                        parades["UTM_X"],
-                        parades["UTM_Y"]),
+                        parades["UTM_Y"],
+                        parades["UTM_X"]),
                     "linies": parades["Linies"].split(
                         sep=' - ')}
                 Buses.add_node(parades["CodAMB"], **node_attributes)
@@ -55,11 +55,11 @@ def get_buses_graph() -> BusesGraph:
                     for linia in Buses.nodes[node_anterior]['linies']:
                         if linia in Buses.nodes[parades["CodAMB"]]['linies']:
                             edge_attributes["linies"].append(linia)
-
-                    Buses.add_edge(
-                        node_anterior,
-                        parades["CodAMB"],
-                        **edge_attributes)
+                    if node_anterior != parades["CodAMB"]:
+                        Buses.add_edge(
+                            node_anterior,
+                            parades["CodAMB"],
+                            **edge_attributes, color='blue')
 
                 node_anterior = parades["CodAMB"]
 
@@ -73,7 +73,6 @@ def get_buses_graph() -> BusesGraph:
 
 def show(g: BusesGraph) -> None:
 
-    print(g.nodes["003402"], g.nodes["001409"], g.edges["003402", "001409"])
     posicions = nx.get_node_attributes(g, 'pos')
     nx.draw(
         g,
@@ -90,14 +89,16 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
     :param g: a graph of the metro of the city
     :param nom_fitxer: a path and name to save the image
     """
-
     buses_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        buses_map.add_marker(CircleMarker((pos[1], pos[0]), "red", 6))
+        buses_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
     for edge in g.edges:
-        coord_1 = (g.nodes[edge[0]]['pos'][1], g.nodes[edge[0]]['pos'][0])
-        coord_2 = (g.nodes[edge[1]]['pos'][1], g.nodes[edge[1]]['pos'][0])
-        buses_map.add_line(Line([coord_1, coord_2], "blue", 2))
+        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
+        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
+        node_1 = (edge[0])
+        node_2 = (edge[1])
+        buses_map.add_line(
+            Line([coord_1, coord_2], g[node_1][node_2]['color'], 2))
 
     image = buses_map.render()
     image.save(nom_fitxer)
@@ -107,7 +108,3 @@ def main():
     graph = get_buses_graph()
     plot(graph, "buses_graph.png")
     show(graph)
-
-
-if __name__ == "__main__":
-    main()
