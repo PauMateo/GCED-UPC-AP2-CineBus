@@ -38,7 +38,9 @@ def get_osmnx_graph() -> OsmnxGraph:
         if geom is not None:
             del (graph[u][v][key]["geometry"])
     for node in graph.nodes():
-        graph.nodes[node]['pos'] = (graph.nodes[node]['x'], graph.nodes[node]['y'])
+        graph.nodes[node]['pos'] = (
+            graph.nodes[node]['x'],
+            graph.nodes[node]['y'])
     return graph
 
 
@@ -46,10 +48,13 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
               src: Coord, dst: Coord) -> Path:
     '''Retorna el camí (Path) més curt entre
     els punts src i dst. '''
-    src_node, dist_src= ox.nearest_nodes(ox_g, src[1], src[0], return_dist=True)
-    dst_node, dist_dst = ox.nearest_nodes(ox_g, dst[1], dst[0], return_dist=True)
+    src_node, dist_src = ox.nearest_nodes(
+        ox_g, src[1], src[0], return_dist=True)
+    dst_node, dist_dst = ox.nearest_nodes(
+        ox_g, dst[1], dst[0], return_dist=True)
     assert dist_src < 10000 and dist_dst < 10000
-    shortest_path = nx.shortest_path(g, src_node, dst_node, weight='time', method='dijkstra')
+    shortest_path = nx.shortest_path(
+        g, src_node, dst_node, weight='time', method='dijkstra')
 
     time = 0
     node_ant = shortest_path[0]
@@ -66,7 +71,7 @@ def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
 
     path_graph: nx.Graph = nx.Graph()
     path_graph.add_node(src, **g.nodes[src])
-    path_graph.add_node(dest, **g.nodes[dest])  
+    path_graph.add_node(dest, **g.nodes[dest])
     for node in path:
         path_graph.add_node(node, **g.nodes[node])
 
@@ -116,8 +121,8 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
             eattr = edgesdict[0]
             if u != v:
                 city.add_edge(u, v, **eattr,
-                              tipus='carrer',
-                              time=eattr['length']/1.5)
+                              tipus='carrer', color='red',
+                              time=eattr['length'] / 1.5)
 
     nearest_nodes: dict[int, int] = {}
     list_x: list[float] = []
@@ -126,13 +131,13 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     for u in g2.nodes:
         assert g2.nodes[u]['tipus'] == 'Parada'
         attr = g2.nodes[u]
-        city.add_node(int(u), **attr)
+        city.add_node(u, **attr)
         list_x.append(g2.nodes[u]['pos'][0])  # ojo amb girar coordenades xd
         list_y.append(g2.nodes[u]['pos'][1])
 
     parada_cruilla: list[int] = ox.nearest_nodes(g1,
-                                                   list_x,
-                                                   list_y, return_dist=False)
+                                                 list_x,
+                                                 list_y, return_dist=False)
 
     for i, u in enumerate(g2.nodes()):
         nearest_nodes[u] = parada_cruilla[i]
@@ -152,16 +157,38 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         coord_u = g2.nodes[u]['pos'][1], g2.nodes[u]['pos'][0]
         coord_v = g2.nodes[v]['pos'][1], g2.nodes[v]['pos'][0]
 
-        city.add_edge(i, u, time=haversine(coord_i, coord_u)/1.5)
-        city.add_edge(j, v, time=haversine(coord_j, coord_v)/1.5)
+        city.add_edge(
+            i,
+            u,
+            tipus='enllaç', color='green',
+            time=(
+                haversine(
+                    coord_i,
+                    coord_u) /
+                1.5) + 150)
+        city.add_edge(
+            j,
+            v,
+            tipus='enllaç', color='green',
+            time=(
+                haversine(
+                    coord_j,
+                    coord_v) /
+                1.5) + 150)
 
     return city
 
 
 def show(g: CityGraph) -> None:
     '''Mostra g de forma interactiva en una finestra'''
-    posicions = nx.get_node_attributes(g,'pos')
-    nx.draw(g, pos=posicions, with_labels=False, node_size=20, node_color='lightblue', edge_color='gray')
+    posicions = nx.get_node_attributes(g, 'pos')
+    nx.draw(
+        g,
+        pos=posicions,
+        with_labels=False,
+        node_size=20,
+        node_color='lightblue',
+        edge_color='gray')
     plt.show()
 
 
@@ -170,26 +197,33 @@ def plot(g: CityGraph, filename: str) -> None:
     cuitat de fons en l'arxiu filename'''
     city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 3))
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        city_map.add_line(Line([coord_1, coord_2], "blue", 2))
+        node_1 = (edge[0])
+        node_2 = (edge[1])
+        city_map.add_line(
+            Line([coord_1, coord_2], g[node_1][node_2]['color'], 2))
 
     image = city_map.render()
     image.save(filename)
 
 
-def plot_path(p: Path, filename: str) -> None:  #hem tret paràmetre g: CityGraph
+def plot_path(p: Path, filename: str) -> None:
+    # hem tret paràmetre g: CityGraph
     '''Mostra el camí p en l'arxiu filename'''
     g = p.path_graph
     city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 20))
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        city_map.add_line(Line([coord_1, coord_2], "blue", 2))
+        node_1 = (edge[0])
+        node_2 = (edge[1])
+        city_map.add_line(
+            Line([coord_1, coord_2], g[node_1][node_2]['color'], 10))
 
     image = city_map.render()
     image.save(filename)
@@ -215,13 +249,14 @@ except Exception:
 input('press enter to continue')
 
 city = build_city_graph(c, b)
-
+plot(city, 'city_graph.png')
 input('find p:')
-p = find_path(c, city, (41.40461, 2.080503), (41.41359, 2.079825))
+p = find_path(c, city, (41.386707215473166, 2.1284072680134725),
+              (41.39623122367987, 2.1853237256834346))
 input('Type nodes:')
 print(p)
 for node in p.path_graph:
     print(p.path_graph.nodes[node])
-for u,v,k in p.path_graph.edges(data=True):
+for u, v, k in p.path_graph.edges(data=True):
     print(k)
 plot_path(p, "plot_plath.png")
