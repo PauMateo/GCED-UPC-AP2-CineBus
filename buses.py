@@ -9,21 +9,22 @@ BusesGraph: TypeAlias = nx.Graph
 
 
 def get_json_data():
+    '''Descarrega les dades de les linies i
+    recorreguts de busos de l'AMB'''
     url = 'https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json'
     try:
         response = requests.get(url)
-
-        if response.status_code == 200:
-            json_data = response.json()
+        json_data = response.json()
 
     except Exception:
         print(f"Error substracting data from {url}")
+        exit(1)
 
     return json_data
 
 
 def get_linies() -> list[Any]:
-    """returns a list of buses' lines"""
+    """Returns a list of buses' lines"""
     data = get_json_data()
     data = data[list(data.keys())[0]]
     linies = data[list(data.keys())[1]]
@@ -32,7 +33,7 @@ def get_linies() -> list[Any]:
 
 
 def get_buses_graph() -> BusesGraph:
-
+    '''...'''
     Buses: BusesGraph = BusesGraph()
     linies = get_linies()
     node_anterior = ""
@@ -52,17 +53,17 @@ def get_buses_graph() -> BusesGraph:
 
                 if node_anterior != "":
                     edge_attributes = {"tipus": "Bus", "linies": []}
+
                     for linia in Buses.nodes[node_anterior]['linies']:
                         if linia in Buses.nodes[parades["CodAMB"]]['linies']:
                             edge_attributes["linies"].append(linia)
+
                     if node_anterior != parades["CodAMB"]:
                         Buses.add_edge(
                             node_anterior,
                             parades["CodAMB"],
                             **edge_attributes, color='blue')
-
                 node_anterior = parades["CodAMB"]
-
             else:
                 node_anterior = ""
 
@@ -72,7 +73,7 @@ def get_buses_graph() -> BusesGraph:
 
 
 def show(g: BusesGraph) -> None:
-
+    '''...'''
     posicions = nx.get_node_attributes(g, 'pos')
     nx.draw(
         g,
@@ -90,8 +91,10 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
     :param nom_fitxer: a path and name to save the image
     """
     buses_map = StaticMap(3500, 3500)
+
     for pos in nx.get_node_attributes(g, 'pos').values():
         buses_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
