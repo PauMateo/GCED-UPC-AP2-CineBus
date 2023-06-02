@@ -9,7 +9,8 @@ from loaders import TextLoader
 import rich.console
 #  from constants import genres as film_genres
 from constants import film_genres
-from PIL import Image
+from PIL.Image import Image as ImageType
+from PIL import Image as Image
 
 '''console = rich.console.Console()
 Bus: city.BusesGraph
@@ -19,7 +20,8 @@ Bboard: billboard.Billboard'''
 
 loader = TextLoader(colour='yellow',
                     text='Loading',
-                    animation='loop')
+                    animation='loop',
+                    speed=.2)
 console = rich.console.Console()
 Bus: city.BusesGraph
 Streets: city.OsmnxGraph
@@ -29,10 +31,21 @@ Bboard: billboard.Billboard
 
 def clear() -> None:
     '''Clear terminal'''
-    os.system('cls' if os.name == 'nt' else 'clear')  # clear terminal
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def show_png(image: ImageType) -> None:
+    '''Mostra en un pop-up la imatge donada, fent
+    servir la llibreria PIL. Si no es pot mostrar,
+    ho notifica a la terminal.'''
+    try:
+        image.show()
+    except Exception:
+        print('Could not plot image. Check your library.')
 
 
 def plot_billboard_menu() -> None:
+    '''Mostra a la terminal el menú i les opcions de la Cartellera.'''
     options = '[cyan]1 - Plot full billboard\n' + \
          '2 - Cinemas \n' + \
          '3 - Films \n' + \
@@ -42,10 +55,11 @@ def plot_billboard_menu() -> None:
 
     console.print(Panel(options, title="[magenta]Billboard options",
                         expand=False))
-    return next_plot(4, actual=1, options=[i for i in range(6)])
+    return next_plot(shift=4, actual=1, options=[i for i in range(6)])
 
 
 def plot_full_billboard() -> None:
+    '''Mostra a la terminal la certellera completa.'''
     table = Table(title='BILLBOARD', border_style='blue3',
                   safe_box=False, box=box.ROUNDED)
 
@@ -64,28 +78,32 @@ def plot_full_billboard() -> None:
             p.language)
 
     console.print(table)
-    return plot_billboard_menu()
+    return next_plot(direct=1)
 
 
 def plot_cinemas() -> None:
+    '''Mostra a la terminal la llista de cinemes de la cartellera'''
     op: str = ''
     for c in Bboard.cinemas:
         op = op + c.name + '\n'
     console.print(
         Panel(op[:-1], title="[magenta]Cinemas", expand=False))
-    return plot_billboard_menu()
+    return next_plot(direct=1)
 
 
 def plot_films() -> None:
+    '''Mostra a la terminal les películes de la cartellera.'''
     op: str = ''
     for f in Bboard.films:
         op = op + f.title + '\n'
     console.print(Panel(
         op[:-1], title="[magenta]Films", expand=False))
-    return plot_billboard_menu()
+    return next_plot(direct=1)
 
 
 def plot_genres() -> None:
+    '''Mostra a la terminal la llista dels gèneres 
+    de les películes de la Cartellera'''
     op: str = ''
     for g in Bboard.genres:
         op = op + g + '\n'
@@ -93,7 +111,7 @@ def plot_genres() -> None:
         op[:-1],
         title="[magenta]Genres",
         expand=False, safe_box=True))
-    return plot_billboard_menu()
+    return next_plot(direct=1)
 
 
 def plot_filter() -> None:
@@ -148,13 +166,11 @@ def plot_filter() -> None:
     try:
         filtered_billboard = Bboard.filter(filters)
     except Exception:
-        console.print(
-            "[red]Sorry, couldn't apply this filter😥💀. See filter options:")
-        return plot_filter()
+        txt = "[red]Sorry, couldn't apply this filter😥💀. See filter options:"
+        return next_plot(direct=9, text=txt)
     if len(filtered_billboard) == 0:
-        console.print(
-            '[red]No movies found with this filter. See filter options:')
-        return plot_filter()
+        txt = '[red]No movies found with this filter. See filter options:'
+        return next_plot(direct=9, text=txt)
     for p in filtered_billboard:
         table.add_row(
             p.film.title,
@@ -164,17 +180,21 @@ def plot_filter() -> None:
             p.language)
     console.print(table)
 
+    return next_plot(direct=9)
+
 
 def plot_maps_menu() -> None:
+    '''Mostra a la terminal el menú dels mapes.'''
     options = '[cyan]1 - Bus map\n' + \
-                    '2 - City map\n' + \
-                    '0 - Return'
+              '2 - City map\n' + \
+              '0 - Return'
 
     console.print(Panel(options, title="[magenta]Maps", expand=False))
-    return next_plot(10, 2, [0, 1, 2])
+    return next_plot(direct=2)
 
 
 def plot_bus_map() -> None:
+    '''Mostra en un pop-up el mapa dels busos.'''
     try:
         image = Image.open('bus_map.png')
     except Exception:
@@ -182,38 +202,63 @@ def plot_bus_map() -> None:
         city.plot(Bus, 'bus_map.png')
         image = Image.open('bus_map.png')
         loader.stop()
-    image.show()
-
-    return plot_maps_menu()
+    show_png(image)
+    return next_plot(direct=3)
 
 
 def plot_city_map():
+    '''Mostra en un pop-up el mapa de la ciutat.'''
     try:
-        raise Exception
         image = Image.open('city_map.png')
     except Exception:
         loader.start()
         city.plot(City, 'city_map.png')
         image = Image.open('city_map.png')
         loader.stop()
-    image.show()
-    return plot_maps_menu()
+    show_png(image)
+    return next_plot(direct=3)
 
 
 def plot_watch() -> None:
-    ...
+    options = '[cyan]Wanna watch a movie? Tell us \n' + \
+                      "wich one and we'll guide you."
+
+    console.print(Panel(options, title="[magenta]Watch movie", expand=False))
+    print('(Enter 0 to Return)')
+    movie = input('Enter movie: ')
+    if movie == 0:
+        return next_plot(direct=15)
+    try:
+        time = input('Enter your time disponibility:\n(Format: hh:mm-hh:mm)')
+        FilteredBboard = Bboard.filter({'time': str(time),
+                                        'city': 'Barcelona',
+                                        'film': str(movie)})
+    except Exception:
+        text = ('[red]Wrong format!😓')
+        return next_plot(direct=3, text=text)
+
+    if FilteredBboard == []:
+        text = ("Couldn't find this movie in Barcelona with\n" +
+                "this time disponibility. Just watch [red]Netflix")
+        return next_plot(direct=3, text=text)
 
 
-def next_plot(shift: int,
+def next_plot(shift: int = -1,
               actual: int = -1,
-              options: list[int] = []) -> None:
+              direct: int = -1,
+              options: list[int] = [],
+              text: str = '') -> None:
     '''funció que retorna el plot corresponent a la crida. Shift és només
     per correspondre el nombre que entre l'usuari amb els "identificadors"
-    de cada plot. Actual és l'identificador de la funció que ha fet la crida.
-    Options són els nombres que l'usuari pot donar. '''
-
-    if len(options) == 0:
-        num = actual
+    de cada plot. actual és l'identificador de la funció que ha fet la crida.
+    Options són els nombres que l'usuari pot donar. Si es dona un nombre per 
+    la variable direct, es retorna directament a la funció corresponent
+    al nombre de direct.'''
+    if text != '':
+        clear()
+        console.print(text)
+    if direct != -1:
+        num = direct
     else:
         try:
             num = int(input('Enter option number: '))
@@ -230,7 +275,7 @@ def next_plot(shift: int,
             clear()
             console.print("[red]This option doesen't exist!😡")
             return next_plot(0, actual)
-    num += shift
+        num += shift
 
     if num == 0:
         console.print(Panel(f'[green]See you soon!👋😘',
@@ -271,7 +316,7 @@ def plot_main_menu() -> None:
                     '0 - Exit'
 
     console.print(Panel(options, title="[magenta]Options", expand=False))
-    return next_plot(0, 15, [i for i in range(4)])
+    return next_plot(shift=0, actual=15, options=[i for i in range(4)])
 
 
 def get_data() -> None:
@@ -289,6 +334,7 @@ def get_data() -> None:
 
 
 def init_program() -> None:
+    '''Inicialitza el programa'''
     clear()
     loader.start()
     get_data()
