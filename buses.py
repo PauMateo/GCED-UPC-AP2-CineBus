@@ -102,9 +102,3 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
 
     image = buses_map.render()
     image.save(nom_fitxer)
-
-
-def main():
-    graph = get_buses_graph()
-    plot(graph, "buses_graph.png")
-    show(graph)
