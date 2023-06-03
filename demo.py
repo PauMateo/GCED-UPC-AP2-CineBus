@@ -18,10 +18,8 @@ Streets: city.OsmnxGraph
 City: city.CityGraph
 Bboard: billboard.Billboard'''
 
-loader = TextLoader(colour='yellow',
-                    text='Loading',
-                    animation='loop',
-                    speed=.2)
+loader = TextLoader(colour='yellow', text='Loading', speed=.2,
+                    animation='loop', complete_text='')
 console = rich.console.Console()
 Bus: city.BusesGraph
 Streets: city.OsmnxGraph
@@ -41,7 +39,8 @@ def show_png(image: ImageType) -> None:
     try:
         image.show()
     except Exception:
-        print('Could not plot image. Check your library.')
+        print('Could not plot image. Check your library, \
+              it should be downloaded.')
 
 
 def plot_billboard_menu() -> None:
@@ -128,9 +127,11 @@ def plot_filter() -> None:
         'film ------- film = film_title\n' +
         'cinema ----- cinema = cinema_name\n' +
         'time ------- time = hh:mm - hh:mm\n' +
+        '               (min_start - max_end)\n' +
         'duration --- duration = duration_minutes\n' +
+        '                        (max_duration)\n' +
         'language --- language = V.O. / Spanish\n' +
-        'city ------- city = Name_city',
+        'city ------- city = city_Name',
         title="[magenta]Filter types---Specific format",
         expand=False))
 
@@ -227,14 +228,21 @@ def plot_watch() -> None:
 
     console.print(Panel(options, title="[magenta]Watch movie", expand=False))
     print('(Enter 0 to Return)')
-    movie = input('Enter movie: ')
-    if int(movie) == 0:
+    movie = input('Enter movie: ').strip()
+
+    if movie == '0':  # Return
+        clear()
         return next_plot(direct=14)
+    if movie not in [f.title for f in Bboard.films]:
+        text = ("[red]We can't find this movie!😓\n" +
+                "Check the available movies at the billboard.")
+        return next_plot(direct=3, text=text)
     try:
         time = input('Enter your time disponibility\n(Format: hh:mm-hh:mm): ')
-        FilteredBboard = Bboard.filter({'time': str(time),
+        start_time = time.split('-')[0]
+        FilteredBboard = Bboard.filter({'time': time,
                                         'city': 'Barcelona',
-                                        'film': str(movie)})
+                                        'film': movie})
         coords = input('Enter your position coordinates\n' +
                        '(format: lat, long): ')
         x_, y_ = coords.split(',')
@@ -245,12 +253,14 @@ def plot_watch() -> None:
         return next_plot(direct=3, text=text)
 
     if FilteredBboard == []:
-        text = "Couldn't find any reachable session of this movie" + \
+        text = "Couldn't find any reachable session of this movie " + \
                "with your disponibility.\nJust watch [red]Netflix: " + \
-                "https://www.netflix.com/es/ \n"
+                "[white]https://www.netflix.com/es/ \n"
         return next_plot(direct=3, text=text)
 
-    result = find_first_movie_path(FilteredBboard, time, (x, y))
+    loader.start()
+    result = find_first_movie_path(FilteredBboard, start_time, (x, y))
+    loader.stop()
     if result is None:
         text = "Couldn't find any reachable session of this movie" + \
                "with your disponibility.\nJust watch [red]Netflix: " + \
@@ -258,13 +268,32 @@ def plot_watch() -> None:
         return next_plot(direct=3, text=text)
 
     path, projection = result
-    city.plot_path(path, 'path.png')
-    console.print('[green]Path found successfully!\n')
-    options = '[cyan]1 - Path description\n' + \
-              ' - See path \n' + \
-              '0- Return'
+    return plot_found_proj(path, projection)
 
-    console.print(Panel(options, title="[magenta]Options", expand=False))
+
+def plot_found_proj(path: city.Path, proj: bboard.Projection) -> None:
+    '''Mostra els resultats obtinguts de la cerca de la
+    película que l'usuari ha demanar a la funció plot_watch().'''
+    options = f'[cyan]{proj.film.title} --- {proj.cinema.name} --- ' + \
+              f'start {proj.start[0]:02d}:{proj.start[1]:02d} --- ' + \
+              f'duration {proj.duration}m'
+    try:
+        indic: str = city.path_indications(path)
+        options += f'\n\n   [green]INDICATIONS:\n[white]{indic}\n' + \
+                   f'   [green]Estimated travel time: {path.time} minutes'
+    except Exception:
+        pass
+
+    console.print(Panel(options, title="[magenta]Movie found!",
+                        expand=False))
+
+    loader.start()
+    city.plot_path(path, 'path.png')
+    image = Image.open('path.png')
+    show_png(image)
+    loader.stop()
+
+    return next_plot(direct=14)
 
 
 def find_first_movie_path(
@@ -272,9 +301,10 @@ def find_first_movie_path(
         time_: str,
         coords: city.Coord) -> tuple[city.Path, bboard.Projection] | None:
     '''Donada la llista de projeccions ja filtrada, busca la
-    primera projecció a la que s'hi pot arribar des de la
-    posició indicada i el temps donat. Retorna el camí fins a aquesta.
+    primera projecció a la que s'hi pot arribar des de la posició
+    indicada i el temps inicial donat. Retorna el camí fins a aquesta.
     '''
+    clear()
     h, m = time_.split(':')
     time = int(h) * 60 + int(m)  # time in minutes
 
@@ -312,7 +342,6 @@ def next_plot(shift: int = -1,
         clear()
         console.print(text)
     if direct != -1:
-        clear()
         num = direct
     else:
         try:
@@ -336,6 +365,7 @@ def next_plot(shift: int = -1,
         console.print(Panel(f'[green]See you soon!👋😘',
                       expand=False,
                       border_style='green3'))
+        console.print('[magenta2]AUTORS: Pau·(Mateo∧Fernández)')
     if num in [4, 10, 13]:
         return plot_main_menu()  # 'Return option'
     if num == 1:
@@ -372,7 +402,8 @@ def plot_main_menu() -> None:
     return next_plot(shift=0, actual=14, options=[i for i in range(4)])
 
 
-def get_data() -> None:
+def get_data() -> tuple[bboard.Billboard, city.BusesGraph,
+                        city.OsmnxGraph, city.CityGraph]:
     '''Descarrega les dades necessàries per
     executar el programa.'''
     Bboard = bboard.read()
@@ -386,35 +417,39 @@ def get_data() -> None:
         except Exception:
             loader.stop()
             console.print('[red]Could not get data from OpenStreepMap.')
-            return
+            exit(1)
         try:
             city.save_osmnx_graph(Streets, 'osmnx_Bcn.pickle')
         except Exception:
             clear()
             console.print('[red]Could not save Osmnx graph.')
     try:
-        City = city.build_city_graph(Streets, Bus)
+        City: city.CityGraph = city.build_city_graph(Streets, Bus)
+        return Bboard, Bus, Streets, City
     except Exception:
         console.print('[red]Sorry, something went wrong!😭💀🤨')
+        exit(1)
 
 
-def init_program() -> None:
+def init_program() -> tuple[bboard.Billboard, city.BusesGraph,
+                            city.OsmnxGraph, city.CityGraph]:
     '''Inicialitza el programa'''
-    loader.start()
-    get_data()
-    loader.stop()
-    time.sleep(1.5)
-    clear()
-    plot_main_menu()
+    data = get_data()
+    return data
+    #  plot_main_menu()
 
 
 if __name__ == "__main__":
     # declaració de constants
     clear()
     loader.start()
-    Bboard = bboard.read()
-    Bboard.genres = film_genres  # (generes amb emojis)
-    Bus = city.get_buses_graph()
+    Bboard: bboard.Billboard
+    Streets: city.OsmnxGraph
+    Bus: city.BusesGraph
+    City: city.CityGraph
     path: city.Path
 
-    init_program()
+    Bboard, Bus, Streets, City = init_program()
+    loader.stop()
+    clear()
+    plot_main_menu()
