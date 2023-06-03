@@ -1,20 +1,14 @@
 from typing import TypeAlias
 from dataclasses import dataclass
-
 import osmnx as ox
 import pickle
 import networkx as nx
 from buses import *
 from haversine import haversine
 
-Coord: TypeAlias = tuple[float, float]   # (latitude, longitude
+Coord: TypeAlias = tuple[float, float]   # (latitude, longitude)
 CityGraph: TypeAlias = nx.Graph
 OsmnxGraph: TypeAlias = nx.MultiDiGraph
-
-
-@dataclass
-class Edge:
-    ...
 
 
 @dataclass
@@ -23,7 +17,7 @@ class Path:
     dest: int
     path: list[int]
     path_graph: nx.Graph
-    time: int  # segons
+    time: int  # minuts
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -63,15 +57,14 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         node_ant = node
 
     p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g, ox_g)
-    path: Path = Path(src_node, dst_node, shortest_path[1:-1], p, int(time))
+    path: Path = Path(src_node, dst_node,
+                      shortest_path[1:-1],
+                      p, int(time) // 60)
     return path
 
 
-def build_path_graph(
-        src: int,
-        dest: int,
-        path: list[int],
-        g: CityGraph):
+def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
+    '''...'''
 
     path_graph: nx.Graph = nx.Graph()
     path_graph.add_node(src, **g.nodes[src])
@@ -88,6 +81,94 @@ def build_path_graph(
     path_graph.add_edge(node_ant, dest, **attr)
 
     return path_graph
+
+
+def path_indications(p: Path) -> str:
+    '''Donat un recorregut, retorna les indicacions d'aquest.'''
+
+    indic: str = ''
+    g: nx.Graph = p.path_graph
+    i = 1
+    n: int | str = p.path[i]
+    n_ant: int | str = p.path[i-1]
+
+    # en cas que no s'hagi d'agafar bus:
+    if all(g.nodes[node]['tipus'] != 'Parada' for node in g.nodes):
+        indic = 'Camina fins al cinema. No cal que agafis bus!'
+        return indic
+
+    while i < len(p.path):
+        # ara estem caminant
+        while g.nodes[n]['tipus'] == 'Cruilla' and i < len(p.path) - 1:
+            i += 1
+            n_ant, n = n, p.path[i]
+
+        if i == len(p.path) - 1:
+            indic += "Baixa del bus i camina el que queda fins al Cinema."
+            return indic
+
+        # ara estem en bus
+        assert g.nodes[n]['tipus'] == 'Parada' and \
+                                      g.nodes[n_ant]['tipus'] == 'Cruilla'
+
+        linia_parada: list[tuple[str, int]] = []  # (linia, parada on s'agafa)
+        parada: int = n  # per controlar on fem canvis de línia
+        ultima_parada: int = parada
+
+        i += 1
+        n_ant, n = p.path[i-1], p.path[i]
+
+        # cas trivial: passar per una parada però sense agafar bus.
+        if g.nodes[n]['tipus'] == 'Cruilla':
+            continue
+
+        # variables per controlar els canvis de linia del trajecte en bus
+        linies: set[str] = set([])
+        noves_linies: set[str] = set(g[n_ant][n]['linies'])
+        i += 1
+        n_ant, n = n, p.path[i]
+
+        # en cas que només s'agafi una parada de bus
+        if g.nodes[n]['tipus'] == 'Cruilla':
+            lin = noves_linies.pop()
+            indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
+                     f"i agafa l'autobus {lin} fins la parada " + \
+                     f"{g.nodes[n]['nom']}."
+            continue
+
+        linies = noves_linies
+        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path):
+            noves_linies = set(g[n_ant][n]['linies'])
+            if linies & noves_linies == set():
+                linia = linies.pop()  # qualsevol de les linies
+                linia_parada.append((linia, parada))
+                parada = n_ant  # actualitzar parada(transbord)
+                linies = noves_linies
+            else:
+                linies = linies & noves_linies
+            ultima_parada = n
+            i += 1
+            n_ant, n = n, p.path[i]
+
+        linia_parada.append((linies.pop(), parada))
+
+        # afegim el recorregut fet en bus
+        lin, par = linia_parada[0]
+        indic += f"Camina fins la parada {g.nodes[par]['nom']}, " + \
+                 f"i agafa el bus {lin}.\n"
+
+        g.nodes[par]['color'] = 'yellow'
+
+        for lin, par in linia_parada[1:]:
+            indic += f"Viatja en bus fins la parada {g.nodes[par]['nom']}," + \
+                     f" i fes transbord a la linia {lin}.\n"
+            g.nodes[par]['color'] = 'yellow'
+
+        lin, par = linia_parada[-1]
+        indic += f"Viatja en bus fins a la parada " + \
+                 f"{g.nodes[ultima_parada]['nom']}.\n"
+
+    return indic
 
 
 def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
@@ -116,11 +197,11 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         attr = g1.nodes[u]
         city.add_node(u, **attr, color='black')
         city.nodes[u]['tipus'] = 'Cruilla'
-        # for each adjacent node v and its (u, v) edges' information ...
+
         for v, edgesdict in nbrsdict.items():
             attr = g1.nodes[v]
             city.add_node(v, **attr, color='black')
-            city.nodes[v]['tipus'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
+            city.nodes[v]['tipus'] = 'Cruilla'
 
             eattr = edgesdict[0]
             if u != v:
@@ -137,13 +218,12 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         assert g2.nodes[u]['tipus'] == 'Parada'
         attr = g2.nodes[u]
         city.add_node(u, **attr, color='black')
-        list_x.append(g2.nodes[u]['pos'][0])  # ojo amb girar coordenades xd
+        list_x.append(g2.nodes[u]['pos'][0])
         list_y.append(g2.nodes[u]['pos'][1])
         parades_nodes.append(u)
 
-    parada_cruilla: list[int] = ox.nearest_nodes(g1,
-                                                 list_x,
-                                                 list_y, return_dist=False)
+    parada_cruilla: list[int] = ox.nearest_nodes(g1, list_x, list_y,
+                                                 return_dist=False)
 
     for i, u in enumerate(parades_nodes):
         nearest_nodes[u] = parada_cruilla[i]
@@ -163,24 +243,11 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         coord_u = g2.nodes[u]['pos'][1], g2.nodes[u]['pos'][0]
         coord_v = g2.nodes[v]['pos'][1], g2.nodes[v]['pos'][0]
 
-        city.add_edge(
-            i,
-            u,
-            tipus='enllaç', color='red',
-            time=(
-                haversine(
-                    coord_i,
-                    coord_u) /
-                1.5) + 150)
-        city.add_edge(
-            j,
-            v,
-            tipus='enllaç', color='red',
-            time=(
-                haversine(
-                    coord_j,
-                    coord_v) /
-                1.5) + 150)
+        city.add_edge(i, u, stipus='enllaç', color='green',
+                      time=(haversine(coord_i, coord_u) / 1.5) + 150)
+
+        city.add_edge(j, v, tipus='enllaç', color='green',
+                      time=(haversine(coord_j, coord_v) / 1.5) + 150)
 
     return city
 
@@ -201,9 +268,11 @@ def show(g: CityGraph) -> None:
 def plot(g: CityGraph, filename: str) -> None:
     '''Desa g com una imatge amb el mapa de la
     cuitat de fons en l'arxiu filename'''
+
     city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
         city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 4))
+
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
@@ -221,8 +290,10 @@ def plot_path(p: Path, filename: str) -> None:
     '''Mostra el camí p en l'arxiu filename'''
     g = p.path_graph
     city_map = StaticMap(3500, 3500)
+
     for pos in nx.get_node_attributes(g, 'pos').values():
         city_map.add_marker(CircleMarker((pos[0], pos[1]), 'black', 15))
+
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
@@ -238,31 +309,3 @@ def plot_path(p: Path, filename: str) -> None:
 def print_osmnx_graph(g: OsmnxGraph) -> None:
     street_graph_projected = ox.project_graph(g)
     ox.plot_graph(street_graph_projected)
-
-
-try:
-    c = load_osmnx_graph('prova.pickle')
-    print(type(c))
-    b = get_buses_graph()
-    print(type(b))
-except Exception:
-    c = get_osmnx_graph()
-    save_osmnx_graph(c, 'prova.pickle')
-    b = get_buses_graph()
-    print(type(b))
-
-
-input('press enter to continue')
-
-city = build_city_graph(c, b)
-plot(city, 'city_graph.png')
-input('find p:')
-p = find_path(c, city, (41.386707215473166, 2.1284072680134725),
-              (41.39623122367987, 2.1853237256834346))
-input('Type nodes:')
-print(p)
-for node in p.path_graph:
-    print(p.path_graph.nodes[node])
-for u, v, k in p.path_graph.edges(data=True):
-    print(k)
-plot_path(p, "plot_plath.png")
