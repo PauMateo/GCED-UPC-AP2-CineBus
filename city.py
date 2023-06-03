@@ -62,12 +62,16 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         time += g[node_ant][node]['time']
         node_ant = node
 
-    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
+    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g, ox_g)
     path: Path = Path(src_node, dst_node, shortest_path[1:-1], p, int(time))
     return path
 
 
-def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
+def build_path_graph(
+        src: int,
+        dest: int,
+        path: list[int],
+        g: CityGraph):
 
     path_graph: nx.Graph = nx.Graph()
     path_graph.add_node(src, **g.nodes[src])
@@ -110,12 +114,12 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     for u, nbrsdict in g1.adjacency():
         attr = g1.nodes[u]
-        city.add_node(u, **attr)
+        city.add_node(u, **attr, color='black')
         city.nodes[u]['tipus'] = 'Cruilla'
         # for each adjacent node v and its (u, v) edges' information ...
         for v, edgesdict in nbrsdict.items():
             attr = g1.nodes[v]
-            city.add_node(v, **attr)
+            city.add_node(v, **attr, color='black')
             city.nodes[v]['tipus'] = 'Cruilla'  # no caldira, ja ho fem lin. 37
 
             eattr = edgesdict[0]
@@ -125,21 +129,23 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
                               time=eattr['length'] / 1.5)
 
     nearest_nodes: dict[int, int] = {}
+    parades_nodes: list[str] = []
     list_x: list[float] = []
     list_y: list[float] = []
 
     for u in g2.nodes:
         assert g2.nodes[u]['tipus'] == 'Parada'
         attr = g2.nodes[u]
-        city.add_node(u, **attr)
+        city.add_node(u, **attr, color='black')
         list_x.append(g2.nodes[u]['pos'][0])  # ojo amb girar coordenades xd
         list_y.append(g2.nodes[u]['pos'][1])
+        parades_nodes.append(u)
 
     parada_cruilla: list[int] = ox.nearest_nodes(g1,
                                                  list_x,
                                                  list_y, return_dist=False)
 
-    for i, u in enumerate(g2.nodes()):
+    for i, u in enumerate(parades_nodes):
         nearest_nodes[u] = parada_cruilla[i]
 
     assert len(parada_cruilla) == len(nearest_nodes)
@@ -160,7 +166,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         city.add_edge(
             i,
             u,
-            tipus='enllaç', color='green',
+            tipus='enllaç', color='red',
             time=(
                 haversine(
                     coord_i,
@@ -169,7 +175,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         city.add_edge(
             j,
             v,
-            tipus='enllaç', color='green',
+            tipus='enllaç', color='red',
             time=(
                 haversine(
                     coord_j,
@@ -197,7 +203,7 @@ def plot(g: CityGraph, filename: str) -> None:
     cuitat de fons en l'arxiu filename'''
     city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 3))
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 4))
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
@@ -216,7 +222,7 @@ def plot_path(p: Path, filename: str) -> None:
     g = p.path_graph
     city_map = StaticMap(3500, 3500)
     for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 20))
+        city_map.add_marker(CircleMarker((pos[0], pos[1]), 'black', 15))
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
         coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
