@@ -56,7 +56,7 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         time += g[node_ant][node]['time']
         node_ant = node
 
-    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g, ox_g)
+    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
     path: Path = Path(src_node, dst_node,
                       shortest_path[1:-1],
                       p, int(time) // 60)
@@ -104,7 +104,7 @@ def path_indications(p: Path) -> str:
             n_ant, n = n, p.path[i]
 
         if i == len(p.path) - 1:
-            indic += "Baixa del bus i camina el que queda fins al Cinema."
+            indic += "Camina el que queda fins al Cinema."
             return indic
 
         # ara estem en bus
@@ -134,6 +134,7 @@ def path_indications(p: Path) -> str:
             indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
                      f"i agafa l'autobus {lin} fins la parada " + \
                      f"{g.nodes[n]['nom']}."
+            g.nodes[n_ant]['color'] = 'yellow'
             continue
 
         linies = noves_linies
@@ -291,8 +292,11 @@ def plot_path(p: Path, filename: str) -> None:
     g = p.path_graph
     city_map = StaticMap(3500, 3500)
 
-    for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), 'black', 15))
+    for node in g.nodes:
+        city_map.add_marker(CircleMarker((
+                            g.nodes[node]['pos'][0],
+                            g.nodes[node]['pos'][1]),
+                            g.nodes[node]['color'], 15))
 
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
