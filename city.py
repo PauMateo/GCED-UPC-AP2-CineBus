@@ -1,10 +1,15 @@
 from typing import TypeAlias
 from dataclasses import dataclass
 import osmnx as ox
+import os
+import tempfile
 import pickle
 import networkx as nx
 from buses import *
 from haversine import haversine
+from PIL import Image, ImageDraw
+from staticmap import CircleMarker, StaticMap, IconMarker
+
 
 Coord: TypeAlias = tuple[float, float]   # (latitude, longitude)
 CityGraph: TypeAlias = nx.Graph
@@ -102,9 +107,12 @@ def build_plot_graph(
         ox_g: OsmnxGraph):
 
     plot_graph: nx.Graph = nx.Graph()
-    plot_graph.add_node(src, **g.nodes[src], size=25)
-    plot_graph.add_node(dest, **g.nodes[dest], size=25)
-    plot_graph.nodes[dest]['color'] = 'bright_green'
+    plot_graph.add_node(src, **g.nodes[src], size=30)
+    plot_graph.add_node(dest, **g.nodes[dest], size=30)
+    plot_graph.nodes[src]['tipus'] = 'src'
+    plot_graph.nodes[dest]['tipus'] = 'dest'
+    plot_graph.nodes[dest]['color'] = 'green'
+    plot_graph.nodes[src]['color'] = '#FF00FF'
     for node in path:
         if g.nodes[node]['tipus'] == 'Cruilla':
             plot_graph.add_node(node, **g.nodes[node], size=0)
@@ -234,7 +242,7 @@ def path_indications(p: Path) -> str:
             indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
                      f"i agafa l'autobus {lin} fins la parada " + \
                      f"{g.nodes[n]['nom']}."
-            g.nodes[n_ant]['color'] = 'yellow'
+            p.city_graph.nodes[n_ant]['color'] = 'orange'
             continue
 
         linies = noves_linies
@@ -258,12 +266,12 @@ def path_indications(p: Path) -> str:
         indic += f"Walk to the bus stop {g.nodes[par]['nom']}, " + \
                  f"and take bus {lin}.\n"
 
-        g.nodes[par]['color'] = 'yellow'
+        p.city_graph.nodes[par]['color'] = 'orange'
 
         for lin, par in linia_parada[1:]:
             indic += f"Travel by bus to the stop {g.nodes[par]['nom']}," + \
                      f" and transfer to line {lin}.\n"
-            g.nodes[par]['color'] = 'yellow'
+            p.city_graph.nodes[par]['color'] = 'orange'
 
         lin, par = linia_parada[-1]
         indic += f"Travel by bus to the stop " + \
@@ -336,7 +344,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         attr = k
         i = nearest_nodes[u]
         j = nearest_nodes[v]
-        time = nx.shortest_path_length(g1, i, j, weight='length') / 8.5
+        time = nx.shortest_path_length(g1, i, j, weight='length') / 5.5
         city.add_edge(u, v, **attr, time=time)  # **attr
 
         coord_i = g1.nodes[i]['y'], g1.nodes[i]['x']
@@ -401,11 +409,25 @@ def plot_path(p: Path, filename: str) -> None:
     g = p.plot_graph
     city_map = StaticMap(3500, 3500)
 
+    map_pointer = 'map_pointer.png'
+
     for node in g.nodes:
-        city_map.add_marker(CircleMarker((
-                            g.nodes[node]['pos'][0],
-                            g.nodes[node]['pos'][1]),
-            g.nodes[node]['color'], g.nodes[node]['size']))
+        if g.nodes[node]['tipus'] == 'dest':
+            try:
+                city_map.add_marker(IconMarker((
+                                    g.nodes[node]['pos'][0],
+                                    g.nodes[node]['pos'][1]), map_pointer,
+                                    50, 50))
+            except Exception:
+                city_map.add_marker(CircleMarker((
+                                g.nodes[node]['pos'][0],
+                                g.nodes[node]['pos'][1]),
+                                g.nodes[node]['color'], g.nodes[node]['size']))
+        else:
+            city_map.add_marker(CircleMarker((
+                                g.nodes[node]['pos'][0],
+                                g.nodes[node]['pos'][1]),
+                                g.nodes[node]['color'], g.nodes[node]['size']))
 
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
@@ -417,39 +439,3 @@ def plot_path(p: Path, filename: str) -> None:
 
     image = city_map.render()
     image.save(filename)
-
-
-def print_osmnx_graph(g: OsmnxGraph) -> None:
-    street_graph_projected = ox.project_graph(g)
-    ox.plot_graph(street_graph_projected)
-
-
-try:
-    c = load_osmnx_graph('prova.pickle')
-    print(type(c))
-    b = get_buses_graph()
-    print(type(b))
-except Exception:
-    c = get_osmnx_graph()
-    save_osmnx_graph(c, 'prova.pickle')
-    b = get_buses_graph()
-    print(type(b))
-
-
-input('press enter to continue')
-
-city = build_city_graph(c, b)
-plot(city, 'city_graph.png')
-input('find p:')
-p = find_path(c, city, (41.386707215473166, 2.1284072680134725),
-              (41.40436757284038, 2.1744032496886416))
-indic = p.path_indications
-
-input('Show indications:')
-print(indic)
-input('Type nodes:')
-for node in p.path_graph:
-    print(p.path_graph.nodes[node])
-for u, v, k in p.path_graph.edges(data=True):
-    print(k)
-plot_path(p, "plot_plath.png")
