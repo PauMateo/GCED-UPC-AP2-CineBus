@@ -47,6 +47,8 @@ Optionally, exclusifly for user's view, we reccommend to dowload the file `map_p
 
 
 ## Authors
-Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester]((https://github.com/PauFdz)
+Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester]((https://github.com/PauFdz), first year students of Data Science and Engineering at UPC, 2022-23.
+
+Contact us: `pau.mateo.bernado@estudiantat.upc.edu`, `pau.fernandez.cesterestudiantat.upc.edu`
 
 
