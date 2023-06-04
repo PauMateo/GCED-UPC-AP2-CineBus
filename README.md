@@ -16,7 +16,7 @@ This project is divided in four parts:
 * `demo.py` : Contains all the code related to user interface of the program.
 
 
-### Prerequisites ❗
+### Prerequisites <picture>  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f6a8/512.webp" type="image/webp">  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f6a8/512.gif" alt="🚨" width="32" height="32"> </picture>
 This program is build in `python3` and `pip3`, both minimally updated. You can update them with the following commands:
 ```
 pip3 install --upgrade pip3
