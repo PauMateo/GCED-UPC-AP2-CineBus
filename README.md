@@ -2,7 +2,7 @@
 Pau · (Mateo ∧ Fernández)
 Wanna watch a movie? Choose one and go by bus!
 
-## Getting Started
+## Getting Started ❗🤖✍🚏
 This project is divided in four parts: 
 
 * `billboard.py` : Contains all the code related to obtaining the actual billboard and provifing search methods.
