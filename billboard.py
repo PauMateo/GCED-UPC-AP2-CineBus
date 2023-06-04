@@ -145,7 +145,7 @@ def read() -> Billboard:
             r = requests.get(url)
             soup = BSoup(r.content, "lxml")
         except Exception:
-            print(f'Error sobstracting billboard form {url}')
+            print(f'Error suobstracting billboard from {url}')
             return bboard  # return empty BillBoard
 
         headers = soup.find_all('div', class_="margin_10b j_entity_container")
