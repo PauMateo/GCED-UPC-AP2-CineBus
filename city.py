@@ -17,6 +17,9 @@ class Path:
     dest: int
     path: list[int]
     path_graph: nx.Graph
+    plot_graph: nx.Graph
+    path_indications: str
+    city_graph: CityGraph
     time: int  # minuts
 
 
@@ -26,7 +29,7 @@ def get_osmnx_graph() -> OsmnxGraph:
 
     graph: OsmnxGraph = ox.graph_from_place("Barcelona",
                                             network_type='walk',
-                                            simplify=True)  # type: ignore
+                                            simplify=False)  # type: ignore
 
     for u, v, key, geom in graph.edges(data="geometry", keys=True):
         if geom is not None:
@@ -56,11 +59,89 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         time += g[node_ant][node]['time']
         node_ant = node
 
-    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
+    path_graph = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
     path: Path = Path(src_node, dst_node,
                       shortest_path[1:-1],
-                      p, int(time) // 60)
+                      path_graph, path_graph, '', g, int(time) // 60)
+    try:
+        indic = path_indications(path)
+
+    except Exception:
+        indic = ''
+
+    plot = build_plot_graph(src_node,
+                            dst_node,
+                            shortest_path[1:-1],
+                            path.city_graph,
+                            ox_g)
+    path: Path = Path(src_node, dst_node,
+                      shortest_path[1:-1],
+                      path_graph, plot, indic, g, int(time) // 60)
+
     return path
+
+
+def build_plot_graph(
+        src: int,
+        dest: int,
+        path: list[int],
+        g: CityGraph,
+        ox_g: OsmnxGraph):
+
+    plot_graph: nx.Graph = nx.Graph()
+    plot_graph.add_node(src, **g.nodes[src], size=25)
+    plot_graph.add_node(dest, **g.nodes[dest], size=25)
+    plot_graph.nodes[dest]['color'] = 'bright_green'
+    for node in path:
+        if g.nodes[node]['tipus'] == 'Cruilla':
+            plot_graph.add_node(node, **g.nodes[node], size=0)
+        else:
+            plot_graph.add_node(node, **g.nodes[node], size=15)
+
+    node_ant = src
+    for node in path:
+        if g.nodes[node_ant]['tipus'] == 'Parada' \
+                and g.nodes[node]['tipus'] == 'Parada':
+            nr_node_ant = ox.nearest_nodes(
+                ox_g,
+                g.nodes[node_ant]['pos'][0],
+                g.nodes[node_ant]['pos'][1],
+                return_dist=0)
+            nr_node = ox.nearest_nodes(
+                ox_g,
+                g.nodes[node]['pos'][0],
+                g.nodes[node]['pos'][1],
+                return_dist=0)
+            shortest_path = nx.shortest_path(
+                ox_g, nr_node_ant, nr_node, weight='length')
+            num_sh_edges = len(shortest_path) + 1
+            g[node_ant][node]['time'] /= num_sh_edges
+            attr = g.get_edge_data(node_ant, node)
+            plot_graph.add_edge(node_ant, nr_node_ant, **attr)
+            short_ant = shortest_path[0]
+            plot_graph.add_node(
+                short_ant,
+                pos=g.nodes[short_ant]['pos'],
+                color='blue',
+                tipus='gir_linia', size=0)
+            for u in shortest_path[1:]:
+                plot_graph.add_edge(short_ant, u, **attr)
+                plot_graph.add_node(
+                    u,
+                    pos=g.nodes[u]['pos'],
+                    color='blue',
+                    tipus='gir_linia', size=0)
+                short_ant = u
+            plot_graph.add_edge(nr_node, node, **attr)
+            node_ant = node
+        else:
+            attr = g.get_edge_data(node_ant, node)
+            plot_graph.add_edge(node_ant, node, **attr)
+            node_ant = node
+    attr = g[node_ant][dest]
+    plot_graph.add_edge(node_ant, dest, **attr)
+
+    return plot_graph
 
 
 def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
@@ -90,7 +171,7 @@ def path_indications(p: Path) -> str:
     g: nx.Graph = p.path_graph
     i = 1
     n: int | str = p.path[i]
-    n_ant: int | str = p.path[i-1]
+    n_ant: int | str = p.path[i - 1]
 
     # en cas que no s'hagi d'agafar bus:
     if all(g.nodes[node]['tipus'] != 'Parada' for node in g.nodes):
@@ -116,7 +197,7 @@ def path_indications(p: Path) -> str:
         ultima_parada: int = parada
 
         i += 1
-        n_ant, n = p.path[i-1], p.path[i]
+        n_ant, n = p.path[i - 1], p.path[i]
 
         # cas trivial: passar per una parada però sense agafar bus.
         if g.nodes[n]['tipus'] == 'Cruilla':
@@ -134,11 +215,11 @@ def path_indications(p: Path) -> str:
             indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
                      f"i agafa l'autobus {lin} fins la parada " + \
                      f"{g.nodes[n]['nom']}."
-            g.nodes[n_ant]['color'] = 'yellow'
+            p.city_graph.nodes[n_ant]['color'] = 'magenta'
             continue
 
         linies = noves_linies
-        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path):
+        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path)-1:
             noves_linies = set(g[n_ant][n]['linies'])
             if linies & noves_linies == set():
                 linia = linies.pop()  # qualsevol de les linies
@@ -158,12 +239,12 @@ def path_indications(p: Path) -> str:
         indic += f"Camina fins la parada {g.nodes[par]['nom']}, " + \
                  f"i agafa el bus {lin}.\n"
 
-        g.nodes[par]['color'] = 'yellow'
+        p.city_graph.nodes[par]['color'] = 'magenta'
 
         for lin, par in linia_parada[1:]:
             indic += f"Viatja en bus fins la parada {g.nodes[par]['nom']}," + \
                      f" i fes transbord a la linia {lin}.\n"
-            g.nodes[par]['color'] = 'yellow'
+            p.city_graph.nodes[par]['color'] = 'magenta'
 
         lin, par = linia_parada[-1]
         indic += f"Viatja en bus fins a la parada " + \
@@ -271,8 +352,17 @@ def plot(g: CityGraph, filename: str) -> None:
     cuitat de fons en l'arxiu filename'''
 
     city_map = StaticMap(3500, 3500)
-    for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 4))
+    for node in g.nodes:
+        if g.nodes[node]['tipus'] == 'Cruilla':
+            city_map.add_marker(CircleMarker((
+                                g.nodes[node]['pos'][0],
+                                g.nodes[node]['pos'][1]),
+                                g.nodes[node]['color'], 0))
+        else:
+            city_map.add_marker(CircleMarker((
+                            g.nodes[node]['pos'][0],
+                            g.nodes[node]['pos'][1]),
+                            g.nodes[node]['color'], 4))
 
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
@@ -280,7 +370,7 @@ def plot(g: CityGraph, filename: str) -> None:
         node_1 = (edge[0])
         node_2 = (edge[1])
         city_map.add_line(
-            Line([coord_1, coord_2], g[node_1][node_2]['color'], 2))
+            Line([coord_1, coord_2], g[node_1][node_2]['color'], 1))
 
     image = city_map.render()
     image.save(filename)
@@ -289,14 +379,14 @@ def plot(g: CityGraph, filename: str) -> None:
 def plot_path(p: Path, filename: str) -> None:
     # hem tret paràmetre g: CityGraph
     '''Mostra el camí p en l'arxiu filename'''
-    g = p.path_graph
+    g = p.plot_graph
     city_map = StaticMap(3500, 3500)
 
     for node in g.nodes:
         city_map.add_marker(CircleMarker((
                             g.nodes[node]['pos'][0],
                             g.nodes[node]['pos'][1]),
-                            g.nodes[node]['color'], 15))
+            g.nodes[node]['color'], g.nodes[node]['size']))
 
     for edge in g.edges:
         coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
@@ -313,3 +403,34 @@ def plot_path(p: Path, filename: str) -> None:
 def print_osmnx_graph(g: OsmnxGraph) -> None:
     street_graph_projected = ox.project_graph(g)
     ox.plot_graph(street_graph_projected)
+
+
+try:
+    c = load_osmnx_graph('prova.pickle')
+    print(type(c))
+    b = get_buses_graph()
+    print(type(b))
+except Exception:
+    c = get_osmnx_graph()
+    save_osmnx_graph(c, 'prova.pickle')
+    b = get_buses_graph()
+    print(type(b))
+
+
+input('press enter to continue')
+
+city = build_city_graph(c, b)
+plot(city, 'city_graph.png')
+input('find p:')
+p = find_path(c, city, (41.386707215473166, 2.1284072680134725),
+              (41.40436757284038, 2.1744032496886416))
+indic = p.path_indications
+
+input('Show indications:')
+print(indic)
+input('Type nodes:')
+for node in p.path_graph:
+    print(p.path_graph.nodes[node])
+for u, v, k in p.path_graph.edges(data=True):
+    print(k)
+plot_path(p, "plot_plath.png")
