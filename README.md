@@ -23,11 +23,13 @@ pip3 install --upgrade pip3
 pip3 install --upgrade python3
 ```
 The librarys used are:
- `networkx` to manipulate graphs.
- `osmnx` to obtain city graphs (Barcelona in this case).
- `haversine` for calculating distances between coordinates.
- `staticmap` to draw and plot maps.
- `python-telegram-bot` to create and interact with a Telegram bot.
- `pandas` to read CSV files.
- `fuzzysearch` to do diffuse searches.
- `typing_extensions` to define a new name for a type.
+ -`typing_extensions` to define new types
+ -`BeautifulSoup` for web scraping to get the billboard
+ -`networkx` to manipulate graphs.
+ -`osmnx` to obtain streets graphs .
+ -`haversine` calculating distances between coordinates.
+ -`staticmap` to draw and plot maps.
+ -`pickle` to dowload graph data so we don't
+ -`rich`,`loaders` for user interface
+ 
+
