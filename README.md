@@ -2,7 +2,7 @@
 Pau · (Mateo ∧ Fernández)
 Wanna watch a movie? Choose one and go by bus!
 
-## Getting Started ❗🤖✍🚏
+## Getting Started 🚏
 This project is divided in four parts: 
 
 * `billboard.py` : Contains all the code related to obtaining the actual billboard and provifing search methods.
@@ -16,7 +16,7 @@ This project is divided in four parts:
 * `demo.py` : Contains all the code related to user interface of the program.
 
 
-### Prerequisites
+### Prerequisites ❗
 This program is build in `python3` and `pip3`, both minimally updated. You can update them with the following commands:
 ```
 pip3 install --upgrade pip3
@@ -38,10 +38,13 @@ You can install this packages one by one with `pip3 install package_name`, or ju
 ```
 pip3 install -r requirements.txt
 ```
-
+<picture>
+  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f92f/512.webp" type="image/webp">
+  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f92f/512.gif" alt="🤯" width="32" height="32">
+</picture>
 Optionally, exclusifly for user's view, we reccommend to dowload the file `map_pointer.png` in the same directory where to run the program. It does not affect execution of the program.
 
-## Usage
+## Usage 🤖
 **Things to consider:**
 - Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
 - The user interface is made in English, but the language of the Billboard it's in _spanish_. Therefore, all the names and search methods require to use the film names, cinemas names... in spanish.
