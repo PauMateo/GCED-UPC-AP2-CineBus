@@ -14,3 +14,20 @@ This project is divided in four parts:
 
 
 * `demo.py` : Contains all the code related to user interface of the program.
+
+
+### Prerequisites
+This program is build in `python3` and `pip3`, both minimally updated. You can update them with the following commands:
+```
+pip3 install --upgrade pip3
+pip3 install --upgrade python3
+```
+The librarys used are:
+- `networkx` to manipulate graphs.
+- `osmnx` to obtain city graphs (Barcelona in this case).
+- `haversine` for calculating distances between coordinates.
+- `staticmap` to draw and plot maps.
+- `python-telegram-bot` to create and interact with a Telegram bot.
+- `pandas` to read CSV files.
+- `fuzzysearch` to do diffuse searches.
+- `typing_extensions` to define a new name for a type.
