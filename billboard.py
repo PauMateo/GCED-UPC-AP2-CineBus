@@ -54,37 +54,39 @@ class Billboard:
         self.genres = g
 
     def filter(self, filters: dict[str, str]) -> list[Projection]:
-        '''Retorna la cartellera aplicant el filtre donat. Els possibles tipus
-        de llistes son a la llista self.poss_filters. El format és:
-        {tipus_filtre: filtre}.
-        El filtre time retorna les projeccions que
-        comencen i acaben dins l'horari indicat, i el format és:
-        {time: hh:mm-hh:mm} (start-end).
-        El filtre duration retorna totes les projeccions de durada
-        igual o inferior a la donada, en minuts.
-        El filtre genre retorna totes les projeccions que siguin dels
-        gèneres donats, i el format és: {genre: genre1-genre2-...}. Es poden
-        donar múltiples gèneres. La resta de filtres actuen obviament.
+        '''Returns the billboard applying the given filter. The possible types
+         of filters are in the self.poss_filters list. The format is:
+         {filter_type: filter}.
+         - The time filter returns projections that
+         they start and end within the time indicated, and the format is:
+         {time: hh:mm-hh:mm} (start-end).
+         - The duration filter returns all duration projections
+         equal to or less than given, in minutes.
+         The genre filter returns all projections that are of
+         given genres, and the format is: {genre: genre1-genre2-...}. they can
+         give multiple genders. All other filters work as expected.
         '''
 
         try:
             assert all([k in self.poss_filters for k in filters.keys()])
 
             return [x for x in self.projections if
-                    all([self._apply_filter(x, f) for f in filters.items()])
-                    ]
+                    all([self._apply_filter(x, f) for f in filters.items()])]
 
         except Exception:
             raise ValueError
 
     def _filter_time(self, x: Projection, filter: str) -> bool:
-        '''Aplica per separat el filtre d'horari a una
-        projecció x. Retorna True si l'horari de la
-        projecció donada est9à inclòs dins del del filtre.'''
+        '''Apply the schedule filter to the projection x.
+        Returns True if the schedule of the
+        given projection is included within the filter.
+        '''
         s, e = filter.split('-')
         start = tuple(map(int, s.split(':')))
         end: tuple[int, int] = tuple(map(int, e.split(':')))
 
+        # we need to check separated cases, because a film can
+        # start and end on diferent days:
         if end < start:
             return (start <= x.start) and \
                         (start <= x.end <= (end[0]+24, end[1]))
@@ -94,43 +96,50 @@ class Billboard:
         return (start <= x.start) and (start <= x.end <= end)
 
     def _filter_duration(self, x: Projection, filter: str) -> bool:
-        '''Filtre de tipus duration'''
+        '''Duration filter. Returns true if the projection x
+        has a duration equal to or less than the given one'''
         return x.duration <= int(filter)
 
     def _filter_cinema(self, x: Projection, filter: str) -> bool:
-        '''Filtre de tipus cinema'''
+        '''Cinema Filter. Returns True if the name of the cinema of the
+        projection it's equal to the given one.'''
         return x.cinema.name == filter
 
     def _filter_genre(self, x: Projection, filter: str) -> bool:
-        '''Filtre de tipus genre '''
+        '''Genre Filter. Returns True if the genre of the film of the
+        projection x is included within the given genre.'''
         return all([g in x.film.genres for g in filter.split('-')])
 
     def _filter_film(self, x: Projection, filter: str) -> bool:
-        ''''''
+        '''Film Filter. Returns True if the name of the film of the
+        projection x it's equal to the given one.'''
         return x.film.title == filter
 
     def _filter_language(self, x: Projection, filter: str) -> bool:
-        ''''''
+        '''Language Filter. Returns True if the language of the
+        projection is the given one.'''
         return x.language == filter
 
     def _filter_director(self, x: Projection, filter: str) -> bool:
-        ''''''
+        '''Director Filter. Returns True if the director of the film of the
+        projection x it's the given one.'''
         return x.language == filter
 
     def _filter_city(self, x: Projection, filter: str) -> bool:
-
+        '''City Filter. Returns True if the cinema of the projection x
+        is in the given city.'''
         return filter in x.cinema.address
 
     def _apply_filter(self, x: Projection, flt: tuple[str, str]) -> bool:
-        '''Aplica el filtre donat a la projecció x. Retorna True si
-        x compleix els requisits del filtre, i False altrament.'''
+        '''Applies de filter given to the projection x by redirecting
+        it to the specific filter functions.'''
 
         return getattr(self, '_filter_' + flt[0])(x, flt[1])
 
 
 def read() -> Billboard:
-    '''Funció que descarrega les dades necessaries
-    i retorna la cartellera del dia actual.
+    '''Function that downloads the necessary data
+    and returns the current day's billboard.
     '''
     bboard: Billboard = Billboard()
 
@@ -144,13 +153,15 @@ def read() -> Billboard:
             r = requests.get(url)
         except Exception:
             print(f'Error substracting billboard from {url}')
-            return bboard  # return empty BillBoard
+            return bboard  # retorna cartellera buida
         try:
             soup = BSoup(r.content, "lxml")
         except Exception:
             print('Error at module BeatifulSoup; check that module ' +
                   "'lxml' is installed.")
             return bboard
+
+        # comencem el web scraping
         headers = soup.find_all('div', class_="margin_10b j_entity_container")
         panels = soup.find_all('div', class_='tabs_box_panels')
 
@@ -159,7 +170,7 @@ def read() -> Billboard:
         projection: Projection
 
         for i in range(len(headers)):
-            # build cinema
+            # construir cinema:
             name = headers[i].a.text[1:-1]
             address = headers[i].find_all(
                 'span', class_="lighten")[1].text[1:-1]
