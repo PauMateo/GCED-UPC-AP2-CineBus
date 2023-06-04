@@ -165,17 +165,23 @@ def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
 
 
 def path_indications(p: Path) -> str:
-    '''Donat un recorregut, retorna les indicacions d'aquest.'''
+    '''Donat un recorregut de tipus Path, retorna les indicacions d'aquest.
+    També posa els nodes on s'ha d'agafar una línia de bus o fer transbord
+    entre línies de color groc.'''
 
     indic: str = ''
     g: nx.Graph = p.path_graph
+
+    for n in p.path:  # comencem amb tots els nodes negres
+        g.nodes[n]['color'] = 'black'
+
     i = 1
     n: int | str = p.path[i]
-    n_ant: int | str = p.path[i - 1]
+    n_ant: int | str = p.path[i-1]
 
     # en cas que no s'hagi d'agafar bus:
     if all(g.nodes[node]['tipus'] != 'Parada' for node in g.nodes):
-        indic = 'Camina fins al cinema. No cal que agafis bus!'
+        indic = "Walk to the cinema. You don't need to take a bus!"
         return indic
 
     while i < len(p.path):
@@ -185,7 +191,7 @@ def path_indications(p: Path) -> str:
             n_ant, n = n, p.path[i]
 
         if i == len(p.path) - 1:
-            indic += "Camina el que queda fins al Cinema."
+            indic += "Walk to the Cinema."
             return indic
 
         # ara estem en bus
@@ -197,7 +203,7 @@ def path_indications(p: Path) -> str:
         ultima_parada: int = parada
 
         i += 1
-        n_ant, n = p.path[i - 1], p.path[i]
+        n_ant, n = p.path[i-1], p.path[i]
 
         # cas trivial: passar per una parada però sense agafar bus.
         if g.nodes[n]['tipus'] == 'Cruilla':
@@ -209,17 +215,17 @@ def path_indications(p: Path) -> str:
         i += 1
         n_ant, n = n, p.path[i]
 
-        # en cas que només s'agafi una parada de bus
+        # cas trivial: només s'agafa una parada de bus
         if g.nodes[n]['tipus'] == 'Cruilla':
             lin = noves_linies.pop()
             indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
                      f"i agafa l'autobus {lin} fins la parada " + \
                      f"{g.nodes[n]['nom']}."
-            p.city_graph.nodes[n_ant]['color'] = 'magenta'
+            g.nodes[n_ant]['color'] = 'yellow'
             continue
 
         linies = noves_linies
-        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path)-1:
+        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path) - 1:
             noves_linies = set(g[n_ant][n]['linies'])
             if linies & noves_linies == set():
                 linia = linies.pop()  # qualsevol de les linies
@@ -236,18 +242,18 @@ def path_indications(p: Path) -> str:
 
         # afegim el recorregut fet en bus
         lin, par = linia_parada[0]
-        indic += f"Camina fins la parada {g.nodes[par]['nom']}, " + \
-                 f"i agafa el bus {lin}.\n"
+        indic += f"Walk to the bus stop {g.nodes[par]['nom']}, " + \
+                 f"and take bus {lin}.\n"
 
-        p.city_graph.nodes[par]['color'] = 'magenta'
+        g.nodes[par]['color'] = 'yellow'
 
         for lin, par in linia_parada[1:]:
-            indic += f"Viatja en bus fins la parada {g.nodes[par]['nom']}," + \
-                     f" i fes transbord a la linia {lin}.\n"
-            p.city_graph.nodes[par]['color'] = 'magenta'
+            indic += f"Travel by bus to the stop {g.nodes[par]['nom']}," + \
+                     f" and transfer to line {lin}.\n"
+            g.nodes[par]['color'] = 'yellow'
 
         lin, par = linia_parada[-1]
-        indic += f"Viatja en bus fins a la parada " + \
+        indic += f"Travel by bus to the stop " + \
                  f"{g.nodes[ultima_parada]['nom']}.\n"
 
     return indic
