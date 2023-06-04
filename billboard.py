@@ -1,10 +1,11 @@
-from dataclasses import dataclass
 import requests
 import json
+
+from dataclasses import dataclass
 from bs4 import BeautifulSoup as BSoup
 from typing import TypeAlias
 from constants import cinemas_coords
-#  import traceback
+
 
 Coord:  TypeAlias = tuple[float, float]   # (latitude, longitude)
 
