@@ -1,4 +1,4 @@
-# CineBus
+# CineBus 🎬🚌
 Pau · (Mateo ∧ Fernández)
 Wanna watch a movie? Choose one and go by bus!
 
