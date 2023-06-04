@@ -46,6 +46,14 @@ Optionally, exclusifly for user's view, we reccommend to dowload the file `map_p
 
 The `demo.py` module offers a simple menu system for the user's interface. It needs to be executed in a __command prompt__, with the command `#>python demo.py` (or `#>py demo.py`,  depending on your python caller) at the same directory where the dowloaded files are. 
 
+The functionalities offered by `demo.py` are as follows:
+- Display today's Billboard and other information, such as all the cinemas and movies from the billboard, types of gernes...
+- Offer filtering and searching methods to apply in the billboard
+- Display the buses map and the city map.
+- Display the indications and the path the user needs to take (by walking and maybe taking the bus) given it's time disponibility and location to go to the cinema to watch the earliest session of a movie he chooses. 
+- mostrar el camí per anar a veure una pel·lícula desitjada des d'un lloc donat en un moment donat. De totes les projeccions possibles cal mostrar el camí per arribar a la que comenci abans (i que s'hi pugui arribar a temps a peu i en bús).
+- Display the names and information of the project autors
+
 
 
 ## Authors
