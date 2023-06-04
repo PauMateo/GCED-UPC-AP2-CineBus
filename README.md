@@ -32,4 +32,13 @@ The librarys used are:
 * `pickle` to dowload graph data so we don't
 * `rich`, `loaders`, `pillow` for user interface
  
+You can install this packages one by one with `pip3 install package_name`, or just with the following command:
+```
+pip3 install -r requirements.txt
+```
+
+## Usage
+**things to consider:**
+- Currently, this project is exclusively confined to the city of Barcelona, so 
+
 
