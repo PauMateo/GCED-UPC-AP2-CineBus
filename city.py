@@ -15,12 +15,40 @@ OsmnxGraph: TypeAlias = nx.MultiDiGraph
 class Path:
     source: int
     dest: int
-    path: list[int]
+    path: list[int]  # llista de nodes del path
     path_graph: nx.Graph
     plot_graph: nx.Graph
     path_indications: str
     city_graph: CityGraph
+    osmnx_graph: OsmnxGraph
     time: int  # minuts
+
+    def __init__(self, source: int, dest: int,
+                 path: list[int], time: int,
+                 city: CityGraph, omsnx: OsmnxGraph) -> None:
+        '''constructor'''
+
+        self.source = source
+        self.dest = dest
+        self.path = path
+        self.time = time
+        self.city_graph = city
+        self.osmnx_graph = omsnx
+
+    def get_other_data(self) -> None:
+        self.path_graph = build_path_graph(self.source, self.dest,
+                                           self.path, self.city_graph)
+        try:
+            indic: str = path_indications(self)
+        except Exception:
+            indic = ''  # si no podem calcular les indicacions
+
+        self.path_indications = indic
+        self.plot_graph = plot = build_plot_graph(self.source,
+                                                  self.dest,
+                                                  self.path,
+                                                  self.city_graph,
+                                                  self.osmnx_graph)
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -49,6 +77,7 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         ox_g, src[1], src[0], return_dist=True)
     dst_node, dist_dst = ox.nearest_nodes(
         ox_g, dst[1], dst[0], return_dist=True)
+
     assert dist_src < 10000 and dist_dst < 10000
     shortest_path = nx.shortest_path(
         g, src_node, dst_node, weight='time', method='dijkstra')
@@ -59,24 +88,8 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph,
         time += g[node_ant][node]['time']
         node_ant = node
 
-    path_graph = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
-    path: Path = Path(src_node, dst_node,
-                      shortest_path[1:-1],
-                      path_graph, path_graph, '', g, int(time) // 60)
-    try:
-        indic = path_indications(path)
-
-    except Exception:
-        indic = ''
-
-    plot = build_plot_graph(src_node,
-                            dst_node,
-                            shortest_path[1:-1],
-                            path.city_graph,
-                            ox_g)
-    path: Path = Path(src_node, dst_node,
-                      shortest_path[1:-1],
-                      path_graph, plot, indic, g, int(time) // 60)
+    path: Path = Path(src_node, dst_node, shortest_path[1:-1],
+                      int(time) // 60, g, ox_g)
 
     return path
 
