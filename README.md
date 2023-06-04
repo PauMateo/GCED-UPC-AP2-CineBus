@@ -24,7 +24,7 @@ pip3 install --upgrade python3
 ```
 The librarys used are:
 * `typing_extensions` to define new types.
-* `BeautifulSoup` for web scraping to get the billboard.
+* `BeautifulSoup`, `requests` for web scraping.
 * `networkx` to manipulate graphs.
 * `osmnx` to obtain streets graphs .
 * `haversine` calculating distances between coordinates.
