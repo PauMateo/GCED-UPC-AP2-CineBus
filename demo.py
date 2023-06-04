@@ -289,16 +289,29 @@ class Demo:
         película que l'usuari ha demanar a la funció plot_watch().'''
         options = f'[cyan]{proj.film.title} --- {proj.cinema.name} --- ' + \
                   f'start {proj.start[0]:02d}:{proj.start[1]:02d} --- ' + \
-                  f'duration {proj.duration}m'
-        try:
-            indic: str = city.path_indications(path)
+                  f'duration {proj.duration} m'
+        loader.start()
+        path.get_other_data()
+        loader.stop()
+
+        indic = path.path_indications
+        if indic != '':
             options += f'\n\n   [green]INDICATIONS:\n[white]{indic}\n' + \
                        f'   [green]Estimated travel time: {path.time} minutes'
-        except Exception:
-            pass
+        else:
+            options += f'Could not substract indications from path.'
 
         console.print(Panel(options, title="[magenta]Movie found!",
                             expand=False))
+
+        if indic != '':
+            console.print('Check the path image;\n' +
+                          '  red line --- walking\n' +
+                          '  blue line --- bus\n' +
+                          '  black dot --- bus stop (during bus ride)\n'
+                          '  orange dot --- take / transfer bus line\n' +
+                          "  pointer / green dot --- cinema's location\n" +
+                          "  magenta dot --- your start location")
 
         loader.start()
         city.plot_path(path, 'path.png')
@@ -321,13 +334,6 @@ class Demo:
         h, m = time_.split(':')
         time = int(h) * 60 + int(m)  # time in minutes
 
-        '''projection: bboard.Projection = FilteredBboard[0]
-        movie_coords: city.Coord = projection.cinema.coord
-        h, m = projection.start
-        movie_start = int(h) * 60 + int(m)  # time in minutes
-        path: city.Path = city.find_path(self.Streets, self.City,
-                                         coords, movie_coords)'''
-
         proj: bboard.Projection
         for proj in FilteredBboard:
             movie_coords: city.Coord = proj.cinema.coord
@@ -345,7 +351,7 @@ class Demo:
         '''Mostra una petita pestanya sobre l'informació
         dels autors del projecte.'''
 
-        text = ('[cyan]AUTORS: [magenta2]Pau·(Mateo∧Fernández)\n' +
+        text = ('[cyan]AUTORS: [magenta2]Pau·(Mateo ∧ Fernández)\n' +
                 '[cyan]First year students of Data science and engineering\n' +
                 'at UPC - Barcelona\n' +
                 'Contact us: pau.mateo.bernado@estudiantat.upc.edu\n' +
