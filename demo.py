@@ -21,14 +21,15 @@ loader = TextLoader(colour='yellow', text='Loading', speed=.2,
 
 @dataclass
 class Demo:
-    '''Petit sistema de menús que ofeix una interfaç amb les
-    seguëunts funcionalitats:
-    - Veure la cartellera, cinemes, películes i gèneres
-    - Mètodes de cerca i filtratge a la cartellera
-    - Veure els mapes de les línies de bus i de la ciutat
-    - Mostrar el camí per anar a veure una pel·lícula desitjada
-      des d'un lloc donat en un moment donat
-    - Breu informació sobre els autors del projecte
+    '''
+    A small menu system that offers an interface
+    with the following functionalities:
+        - View the billboard, cinemas, movies, and genres.
+        - Search and filtering methods for the billboard.
+        - View maps of bus lines and the city.
+        - Show the way to go and see a desired movie from a given
+          location at a given time.
+        - Brief information about the authors of the project.
     '''
 
     Bus: city.BusesGraph
@@ -37,17 +38,18 @@ class Demo:
     Bboard: bboard.Billboard
 
     def __init__(self) -> None:
-        '''Constructor de la classe. Inicia el sistema de menús'''
+        """Constructor of the class. Initializes the menu system."""
         return self.init_demo()
 
     def clear(self) -> None:
-        '''Neteja la pantalla de la terminal'''
+        """Clears the terminal window."""
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def show_png(self, image: ImageType) -> None:
-        '''Mostra en un pop-up la imatge donada, fent
-        servir la llibreria PIL. Si no es pot mostrar,
-        ho notifica a la terminal d'execució.'''
+        """
+        Display the given image in a pop-up, using the PIL library.
+        If it cannot be displayed, notify it in the execution terminal.
+        """
         try:
             image.show()
         except Exception:
@@ -55,7 +57,7 @@ class Demo:
                   'it should be downloaded.')
 
     def plot_billboard_menu(self) -> None:
-        '''Mostra a la terminal el menú i les opcions de la Cartellera.'''
+        """Display the menu and options of the Billboard in the terminal."""
 
         options = '[cyan]1 - Plot full billboard\n' + \
                   '2 - Cinemas \n' + \
@@ -69,7 +71,7 @@ class Demo:
         return self.next_plot(shift=5, actual=1, options=[i for i in range(6)])
 
     def plot_full_billboard(self) -> None:
-        '''Mostra a la terminal la certellera completa.'''
+        """Display the complete billboard in the terminal."""
         table = Table(title='BILLBOARD', border_style='blue3',
                       safe_box=False, box=box.ROUNDED)
 
@@ -91,7 +93,7 @@ class Demo:
         return self.next_plot(direct=1)
 
     def plot_cinemas(self) -> None:
-        '''Mostra a la terminal la llista de cinemes de la cartellera'''
+        """Display the list of cinemas from the billboard in the terminal."""
         op: str = ''
         for c in self.Bboard.cinemas:
             op = op + c.name + '\n'
@@ -100,7 +102,7 @@ class Demo:
         return self.next_plot(direct=1)
 
     def plot_films(self) -> None:
-        '''Mostra a la terminal les películes de la cartellera.'''
+        """Display the movies from the billboard in the terminal."""
         op: str = ''
         for f in self.Bboard.films:
             op = op + f.title + '\n'
@@ -109,8 +111,10 @@ class Demo:
         return self.next_plot(direct=1)
 
     def plot_genres(self) -> None:
-        '''Mostra a la terminal la llista dels gèneres
-        de les películes de la Cartellera'''
+        """
+        Display the list of genres of the movies
+        in the Billboard in the terminal.
+        """
         op: str = ''
         for g in self.Bboard.genres:
             op = op + g + '\n'
@@ -121,11 +125,10 @@ class Demo:
         return self.next_plot(direct=1)
 
     def plot_filter(self) -> None:
-        '''Llegeix un filtre, l'aplica a la
-        cartellera i la mostra.'''
-        # op: str = ''
-        '''for f in Bboard.poss_filters:
-            op = op + f + '\n' --> ['cyan]{op[:-1]} '''
+        """
+        Reads a filter, applies it to the billboard,
+        and displays the filtered results in the terminal.
+        """
 
         console.print(Panel(  # plot filter types available
             '[cyan]' +
@@ -191,7 +194,7 @@ class Demo:
         return self.next_plot(direct=10)
 
     def plot_maps_menu(self) -> None:
-        '''Mostra a la terminal el menú dels mapes.'''
+        """Displays the menu of maps in the terminal."""
         options = '[cyan]1 - Bus map\n' + \
                   '2 - City map\n' + \
                   '0 - Return'
@@ -200,12 +203,12 @@ class Demo:
         return self.next_plot(shift=11, actual=2, options=[0, 1, 2])
 
     def plot_bus_map(self) -> None:
-        '''Mostra en un pop-up el mapa dels busos.'''
+        """Displays the bus map in a pop-up."""
         loader.start()
         try:
             image = Image.open('bus_map.png')
         except Exception:
-            city.plot(self.Bus, 'bus_map.png')
+            city.plot_buses(self.Bus, 'bus_map.png')
             image = Image.open('bus_map.png')
         self.show_png(image)
         loader.stop()
@@ -213,12 +216,12 @@ class Demo:
         return self.next_plot(direct=2)
 
     def plot_city_map(self):
-        '''Mostra en un pop-up el mapa de la ciutat.'''
+        """Displays the city map in a pop-up."""
         loader.start()
         try:
             image = Image.open('city_map.png')
         except Exception:
-            city.plot(self.City, 'city_map.png')
+            city.plot_city(self.City, 'city_map.png')
             image = Image.open('city_map.png')
         self.show_png(image)
         loader.stop()
@@ -226,6 +229,10 @@ class Demo:
         return self.next_plot(direct=2)
 
     def plot_watch(self) -> None:
+        """
+        By a given movie from the user, plots the shortest path to the
+        nearest cinema where that movie is played and gives the indications.
+        """
         options = '[cyan]Wanna watch a movie? Tell us \n' + \
             "wich one and we'll guide you."
 
@@ -281,12 +288,15 @@ class Demo:
             return self.next_plot(direct=3, text=text)
 
         path, projection = result
+
         return self.plot_found_proj(path, projection)
 
     def plot_found_proj(self, path: city.Path,
                         proj: bboard.Projection) -> None:
-        '''Mostra els resultats obtinguts de la cerca de la
-        película que l'usuari ha demanar a la funció plot_watch().'''
+        """
+        Displays the results obtained from the search for the
+        movie requested by the user in the function plot_watch().
+        """
         options = f'[cyan]{proj.film.title} --- {proj.cinema.name} --- ' + \
                   f'start {proj.start[0]:02d}:{proj.start[1]:02d} --- ' + \
                   f'duration {proj.duration} m'
@@ -326,10 +336,11 @@ class Demo:
             FilteredBboard: list[bboard.Projection],
             time_: str,
             coords: city.Coord) -> tuple[city.Path, bboard.Projection] | None:
-        '''Donada la llista de projeccions ja filtrada, busca la
-        primera projecció a la que s'hi pot arribar des de la posició
-        indicada i el temps inicial donat. Retorna el camí fins a aquesta.
-        '''
+        """
+        Given the filtered list of screenings, search for the first screening
+        that can be reached from the specified position
+        and the given initial time. Returns the path to reach that screening.
+        """
         self.clear()
         h, m = time_.split(':')
         time = int(h) * 60 + int(m)  # time in minutes
@@ -345,13 +356,15 @@ class Demo:
             if time + path.time <= movie_start:
                 return path, proj
 
-        return None  # could't find any path :'(
+        return None  # if could't find any path :'(
 
     def plot_about_us(self) -> None:
-        '''Mostra una petita pestanya sobre l'informació
-        dels autors del projecte.'''
+        """
+        Displays a small tab with information
+        about the authors of the project.
+        """
 
-        text = ('[cyan]AUTORS: [magenta2]Pau·(Mateo ∧ Fernández)\n' +
+        text = ('[cyan]AUTHORS: [magenta2]Pau·(Mateo ∧ Fernández)\n' +
                 '[cyan]First year students of Data science and engineering\n' +
                 'at UPC - Barcelona\n' +
                 'Contact us: pau.mateo.bernado@estudiantat.upc.edu\n' +
@@ -377,12 +390,15 @@ class Demo:
                   direct: int = -1,
                   options: list[int] = [],
                   text: str = '') -> None:
-        '''funció que retorna el plot corresponent a la crida. Shift és només
-        per correspondre el nombre que entre l'usuari amb els "identificadors"
-        de cada plot. actual és l'identificador de la funció que ha fet la
-        crida. Options són els nombres que l'usuari pot donar.
-        Si es dona un nombre per la variable direct, es retorna directament
-        la funció corresponent al nombre. '''
+        """
+        The function returns the corresponding plot based on the call.
+        'Shift' is only used to match the number entered by the user
+        with the 'identifiers' of each plot.
+        'Actual' is the identifier of the function that made the call.
+        'Options' are the numbers that the user can provide.
+        If a number is given for the 'direct' variable,
+        the corresponding function is returned directly.
+        """
 
         if text != '':
             self.clear()
@@ -442,8 +458,7 @@ class Demo:
 
     def get_data(self) -> tuple[bboard.Billboard, city.BusesGraph,
                                 city.OsmnxGraph, city.CityGraph]:
-        '''Descarrega les dades necessàries per
-        executar el programa.'''
+        """Downloads the necessary data to run the program."""
         self.Bboard = bboard.read()
         self.Bboard.genres = film_genres  # (generes amb emojis)
         self.Bus = city.get_buses_graph()
