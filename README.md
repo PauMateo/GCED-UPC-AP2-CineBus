@@ -29,8 +29,10 @@ The librarys used are:
 * `osmnx` to obtain streets graphs .
 * `haversine` calculating distances between coordinates.
 * `staticmap` to draw and plot maps.
-* `pickle` to dowload graph data so we don't
 * `rich`, `loaders`, `pillow` for user interface
+* `pickle` to save big datas to the computer (in this case, the osmnx graph of Bcn)
+This las module is a Python's default one, so you shouldn't have to install it.
+
  
 You can install this packages one by one with `pip3 install package_name`, or just with the following command:
 ```
