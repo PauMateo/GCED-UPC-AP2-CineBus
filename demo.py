@@ -14,15 +14,23 @@ from PIL import Image as Image
 from dataclasses import dataclass
 
 
+console = rich.console.Console()
 loader = TextLoader(colour='yellow', text='Loading', speed=.2,
                     animation='loop', complete_text='')
-console = rich.console.Console()
 
 
 @dataclass
 class Demo:
     '''Petit sistema de menús que ofeix una interfaç amb les
-    seguëunts funcionalitats:'''
+    seguëunts funcionalitats:
+    - Veure la cartellera, cinemes, películes i gèneres
+    - Mètodes de cerca i filtratge a la cartellera
+    - Veure els mapes de les línies de bus i de la ciutat
+    - Mostrar el camí per anar a veure una pel·lícula desitjada
+      des d'un lloc donat en un moment donat
+    - Breu informació sobre els autors del projecte
+    '''
+
     Bus: city.BusesGraph
     Streets: city.OsmnxGraph
     City: city.CityGraph
