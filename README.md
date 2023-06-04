@@ -53,6 +53,7 @@ The functionalities offered by `demo.py` are as follows:
 - Display the indications and the path the user needs to take (by walking and maybe taking the bus) given it's time disponibility and location to go to the cinema to watch the earliest session of a movie he chooses. 
 - Display the names and information of the project autors
 
+<img src="CineBus_menu.png" width="30%" alt = "ruta 1"/> |<img src="scr8.png" width="30%" alt="ruta 2"/>
 
 
 ## Authors
