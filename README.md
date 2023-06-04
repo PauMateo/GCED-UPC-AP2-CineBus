@@ -37,8 +37,10 @@ You can install this packages one by one with `pip3 install package_name`, or ju
 pip3 install -r requirements.txt
 ```
 
+Optionally, exclusifly for user's view, we reccommend to dowload the file ... . It does not affect execution of the program.
+
 ## Usage
-**things to consider:**
-- Currently, this project is exclusively confined to the city of Barcelona, so 
+**Things to consider:**
+- Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
 
 
