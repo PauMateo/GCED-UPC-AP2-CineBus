@@ -24,7 +24,10 @@ def get_json_data():
 
 
 def get_linies() -> list[Any]:
-    """Returns a list of buses' lines"""
+    """
+    Returns a list of buses' lines and its information extracted
+    from the json data.
+    """
     data = get_json_data()
     data = data[list(data.keys())[0]]
     linies = data[list(data.keys())[1]]
@@ -33,13 +36,18 @@ def get_linies() -> list[Any]:
 
 
 def get_buses_graph() -> BusesGraph:
-    '''...'''
+    """
+    Creates the buses graph using the json_data and returns
+    it as BusesGraph type.
+    """
     Buses: BusesGraph = BusesGraph()
     linies = get_linies()
     node_anterior = ""
 
     for linia in linies:
+        # we access the stops of a single line
         for parades in linia["Parades"]["Parada"]:
+            # we verify the stops are from Barcelona city
             if parades["Municipi"] == "Barcelona":
                 node_attributes = {
                     "tipus": "Parada",
@@ -73,7 +81,7 @@ def get_buses_graph() -> BusesGraph:
 
 
 def show(g: BusesGraph) -> None:
-    '''...'''
+    """Shows the buses graph using matplotlib.pyplot."""
     posicions = nx.get_node_attributes(g, 'pos')
     nx.draw(
         g,
@@ -85,21 +93,23 @@ def show(g: BusesGraph) -> None:
     plt.show()
 
 
-def plot(g: BusesGraph, nom_fitxer: str) -> None:
+def plot_buses(g: BusesGraph, nom_fitxer: str) -> None:
     """
+    Plots the buses graph with the Barcelona map at the backraound and saves
+    the file as "nom_fitxer.png".
     :param g: a graph of the metro of the city
     :param nom_fitxer: a path and name to save the image
     """
     buses_map = StaticMap(3500, 3500)
 
     for pos in nx.get_node_attributes(g, 'pos').values():
-        buses_map.add_marker(CircleMarker((pos[0], pos[1]), "red", 6))
+        buses_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 6))
 
     for edge in g.edges:
-        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
-        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        node_1 = (edge[0])
-        node_2 = (edge[1])
+        node_1 = edge[0]
+        node_2 = edge[1]
+        coord_1 = (g.nodes[node_1]['pos'][0], g.nodes[edge[0]]['pos'][1])
+        coord_2 = (g.nodes[node_2]['pos'][0], g.nodes[edge[1]]['pos'][1])
         buses_map.add_line(
             Line([coord_1, coord_2], g[node_1][node_2]['color'], 2))
 
