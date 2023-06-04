@@ -47,6 +47,6 @@ Optionally, exclusifly for user's view, we reccommend to dowload the file `map_p
 
 
 ## Authors
-Developed by [Pau Mateo Bernado]([https://github.com/carlosarboness](https://github.com/PauMateo)) and [Pau Fernández Cester]([https://github.com/benetraco](https://github.com/PauFdz))
+Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester]((https://github.com/PauFdz)
 
 
