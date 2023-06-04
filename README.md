@@ -44,11 +44,13 @@ Optionally, exclusifly for user's view, we reccommend to dowload the file `map_p
 - Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
 - The user interface is made in English, but the language of the Billboard it's in _spanish_. Therefore, all the names and search methods require to use the film names, cinemas names... in spanish.
 
+The `demo.py` module offers a simple menu system for the user's interface. It needs to be executed in a __command prompt__, with the command `python3 demo.py` (or `py demo.py`,  depending on your python caller) at the same directory where the dowloaded files are. 
+
 
 
 ## Authors
 Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester]((https://github.com/PauFdz), first year students of Data Science and Engineering at UPC, 2022-23.
 
-Contact us: `pau.mateo.bernado@estudiantat.upc.edu`, `pau.fernandez.cesterestudiantat.upc.edu`
+Contact us:  `pau.mateo.bernado@estudiantat.upc.edu`,  `pau.fernandez.cesterestudiantat.upc.edu`
 
 
