@@ -44,3 +44,9 @@ Optionally, exclusifly for user's view, we reccommend to dowload the file `map_p
 - Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
 - The user interface is made in English, but the language of the Billboard it's in _spanish_. Therefore, all the names and search methods require to use the film names, cinemas names... in spanish.
 
+
+
+## Authors
+Developed by [Pau Mateo Bernado]([https://github.com/carlosarboness](https://github.com/PauMateo)) and [Pau Fernández Cester]([https://github.com/benetraco](https://github.com/PauFdz))
+
+
