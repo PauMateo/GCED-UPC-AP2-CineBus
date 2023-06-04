@@ -56,7 +56,7 @@ The functionalities offered by `demo.py` are as follows:
 - Display the names and information of the project autors
 
 Here is a diagram of the menu system:
-<img src="CineBus_menu.png" width=70% height=70%> 
+<img src="CineBus_menu.png" > 
 
 
 ## Authors <picture>  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.webp" type="image/webp">  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.gif" alt="🤓" width="32" height="32"></picture>
