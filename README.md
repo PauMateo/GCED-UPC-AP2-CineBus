@@ -30,6 +30,6 @@ The librarys used are:
 * `haversine` calculating distances between coordinates.
 * `staticmap` to draw and plot maps.
 * `pickle` to dowload graph data so we don't
-* `rich`,`loaders` for user interface
+* `rich`, `loaders`, `pillow` for user interface
  
 
