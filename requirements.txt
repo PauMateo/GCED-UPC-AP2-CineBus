@@ -10,3 +10,4 @@ staticmap==0.5.5
 rich==13.3.5
 loader==2017.9.11
 Pillow==9.5.0
+lxml==3.4.2
