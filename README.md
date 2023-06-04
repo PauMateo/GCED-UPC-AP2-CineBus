@@ -41,7 +41,7 @@ pip3 install -r requirements.txt
 
 Optionally, exclusifly for user's view, we reccommend to dowload the file `map_pointer.png` in the same directory where to run the program. It does not affect execution of the program.
 
-## Usage 🤖
+## Usage <picture>  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.webp" type="image/webp">  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.gif" alt="🤖" width="32" height="32"></picture>
 **Things to consider:**
 - Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
 - The user interface is made in English, but the language of the Billboard it's in _spanish_. Therefore, all the names and search methods require to use the film names, cinemas names... in spanish.
@@ -63,7 +63,4 @@ Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernánde
 
 Contact us:  `pau.mateo.bernado@estudiantat.upc.edu`,  `pau.fernandez.cesterestudiantat.upc.edu`
 
-
-
-<div class="tenor-gif-embed" data-postid="14335651" data-share-method="host" data-aspect-ratio="1.64" data-width="100%"><a href="https://tenor.com/view/bus-on-my-way-on-the-way-public-transit-public-transportation-gif-14335651%22%3EBus On My Way Sticker</a>from <a href="https://tenor.com/search/bus-stickers%22%3EBus Stickers</a></div> <script type="text/javascript" async src="https://tenor.com/embed.js%22%3E</script>
 
