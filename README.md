@@ -61,9 +61,10 @@ Here is a diagram of the menu system:
 
 The format of the filter system is quite specyfic. It's already explained to the user right before he can enter the filter, as you can see in the image above. 
 Here are some examples:
-
+```
 - #>Enter filter: time=16:00 - 20:00; city = Barcelona; movie = Star Wars episodio V: El Imperio contraataca
 - #>Enter filter: genre = Acción; cinema = Balmes Multicines
+```
 
 ## Authors <picture>  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.webp" type="image/webp">  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.gif" alt="🤓" width="32" height="32"></picture>
 Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester](https://github.com/PauFdz), first year students of Data Science and Engineering at UPC, 2022-23. 
