@@ -1,6 +1,5 @@
 import requests
 import json
-
 from dataclasses import dataclass
 from bs4 import BeautifulSoup as BSoup
 from typing import TypeAlias
@@ -143,11 +142,15 @@ def read() -> Billboard:
     for url in urls:
         try:
             r = requests.get(url)
+        except Exception:
+            print(f'Error substracting billboard from {url}')
+            return bboard  # return empty BillBoard
+        try:
             soup = BSoup(r.content, "lxml")
         except Exception:
-            print(f'Error suobstracting billboard from {url}')
-            return bboard  # return empty BillBoard
-
+            print('Error at module BeatifulSoup; check that module ' +
+                  "'lxml' is installed.")
+            return bboard
         headers = soup.find_all('div', class_="margin_10b j_entity_container")
         panels = soup.find_all('div', class_='tabs_box_panels')
 
