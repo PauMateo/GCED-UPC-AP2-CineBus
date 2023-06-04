@@ -57,7 +57,7 @@ The functionalities offered by `demo.py` are as follows:
 
 Here is a diagram of the menu system:
 
-<img src="CineBus_menu.png" width=80% height=80%> 
+<img src="menu_diagram.png" width=80% height=80%> 
 
 The format of the filter system is quite specyfic. It's already explained to the user right before he can enter the filter, as you can see in the image above. 
 Here are some examples:
