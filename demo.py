@@ -39,8 +39,8 @@ def show_png(image: ImageType) -> None:
     try:
         image.show()
     except Exception:
-        print('Could not plot image. Check your library, \
-              it should be downloaded.')
+        print('Could not plot image. Check your library, ' +
+              'it should be downloaded.')
 
 
 def plot_billboard_menu() -> None:
@@ -258,12 +258,19 @@ def plot_watch() -> None:
                 "[white]https://www.netflix.com/es/ \n"
         return next_plot(direct=3, text=text)
 
-    loader.start()
-    result = find_first_movie_path(FilteredBboard, start_time, (x, y))
-    loader.stop()
+    try:
+        loader.start()
+        result = find_first_movie_path(FilteredBboard, start_time, (x, y))
+        loader.stop()
+    except AssertionError:
+        loader.stop()
+        text = "It appears you are not in Barcelona. For now, " + \
+               "our program only works in Barcelona, sorry!"
+        return next_plot(direct=3, text=text)
+
     if result is None:
         text = "Couldn't find any reachable session of this movie" + \
-               "with your disponibility.\nJust watch [red]Netflix: " + \
+               " with your disponibility.\nJust watch [red]Netflix: " + \
                 "https://www.netflix.com/es/ \n"
         return next_plot(direct=3, text=text)
 
@@ -316,8 +323,8 @@ def find_first_movie_path(
 
     proj: bboard.Projection
     for proj in FilteredBboard:
-        movie_coords: city.Coord = projection.cinema.coord
-        h, m = projection.start
+        movie_coords: city.Coord = proj.cinema.coord
+        h, m = proj.start
         movie_start = int(h) * 60 + int(m)  # time in minutes
         path: city.Path = city.find_path(Streets, City, coords, movie_coords)
 
