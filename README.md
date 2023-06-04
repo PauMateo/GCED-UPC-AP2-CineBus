@@ -51,7 +51,6 @@ The functionalities offered by `demo.py` are as follows:
 - Offer filtering and searching methods to apply in the billboard
 - Display the buses map and the city map.
 - Display the indications and the path the user needs to take (by walking and maybe taking the bus) given it's time disponibility and location to go to the cinema to watch the earliest session of a movie he chooses. 
-- mostrar el camí per anar a veure una pel·lícula desitjada des d'un lloc donat en un moment donat. De totes les projeccions possibles cal mostrar el camí per arribar a la que comenci abans (i que s'hi pugui arribar a temps a peu i en bús).
 - Display the names and information of the project autors
 
 
