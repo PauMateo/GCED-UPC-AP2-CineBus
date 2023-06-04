@@ -1,323 +1,476 @@
-import osmnx as ox
-import pickle
+import os
 
-import networkx as nx
+import billboard as bboard
+import rich.console
+import city
 
-from haversine import haversine
-from typing import TypeAlias
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
+from loaders import TextLoader
+from constants import film_genres
+from PIL.Image import Image as ImageType
+from PIL import Image as Image
 from dataclasses import dataclass
-from buses import *
 
-Coord: TypeAlias = tuple[float, float]   # (latitude, longitude)
-CityGraph: TypeAlias = nx.Graph
-OsmnxGraph: TypeAlias = nx.MultiDiGraph
+
+console = rich.console.Console()
+loader = TextLoader(colour='yellow', text='Loading', speed=.2,
+                    animation='loop', complete_text='')
 
 
 @dataclass
-class Path:
-    source: int
-    dest: int
-    path: list[int]
-    path_graph: nx.Graph
-    time: int  # minuts
-
-
-def get_osmnx_graph() -> OsmnxGraph:
-    '''Funció que obte i retorna el graf
-    dels carrers de Barcelona'''
-
-    graph: OsmnxGraph = ox.graph_from_place("Barcelona",
-                                            network_type='walk',
-                                            simplify=True)  # type: ignore
-
-    for u, v, key, geom in graph.edges(data="geometry", keys=True):
-        if geom is not None:
-            del (graph[u][v][key]["geometry"])
-    for node in graph.nodes():
-        graph.nodes[node]['pos'] = (
-            graph.nodes[node]['x'],
-            graph.nodes[node]['y'])
-    return graph
-
-
-def find_path(ox_g: OsmnxGraph, g: CityGraph,
-              src: Coord, dst: Coord) -> Path:
-    '''Retorna el camí (Path) més curt entre
-    els punts src i dst. '''
-    src_node, dist_src = ox.nearest_nodes(
-        ox_g, src[1], src[0], return_dist=True)
-    dst_node, dist_dst = ox.nearest_nodes(
-        ox_g, dst[1], dst[0], return_dist=True)
-    assert dist_src < 10000 and dist_dst < 10000
-    shortest_path = nx.shortest_path(
-        g, src_node, dst_node, weight='time', method='dijkstra')
-
-    time = 0
-    node_ant = shortest_path[0]
-    for node in shortest_path[1:]:
-        time += g[node_ant][node]['time']
-        node_ant = node
-
-    p = build_path_graph(src_node, dst_node, shortest_path[1:-1], g)
-    path: Path = Path(src_node, dst_node,
-                      shortest_path[1:-1],
-                      p, int(time) // 60)
-    return path
-
-
-def build_path_graph(src: int, dest: int, path: list[int], g: CityGraph):
-    '''...'''
-
-    path_graph: nx.Graph = nx.Graph()
-    path_graph.add_node(src, **g.nodes[src])
-    path_graph.add_node(dest, **g.nodes[dest])
-    for node in path:
-        path_graph.add_node(node, **g.nodes[node])
-
-    node_ant = src
-    for node in path:
-        attr = g.get_edge_data(node_ant, node)
-        path_graph.add_edge(node_ant, node, **attr)
-        node_ant = node
-    attr = g[node_ant][dest]
-    path_graph.add_edge(node_ant, dest, **attr)
-
-    return path_graph
-
-
-def path_indications(p: Path) -> str:
-    '''Donat un recorregut de tipus Path, retorna les indicacions d'aquest.
-    També posa els nodes on s'ha d'agafar una línia de bus o fer transbord 
-    entre línies de color groc.'''
-
-    indic: str = ''
-    g: nx.Graph = p.path_graph
-
-    for n in p.path:  # comencem amb tots els nodes negres
-        g.nodes[n]['color'] = 'black'
-
-    i = 1
-    n: int | str = p.path[i]
-    n_ant: int | str = p.path[i-1]
-
-    # en cas que no s'hagi d'agafar bus:
-    if all(g.nodes[node]['tipus'] != 'Parada' for node in g.nodes):
-        indic = "Walk to the cinema. You don't need to take a bus!"
-        return indic
-
-    while i < len(p.path):
-        # ara estem caminant
-        while g.nodes[n]['tipus'] == 'Cruilla' and i < len(p.path) - 1:
-            i += 1
-            n_ant, n = n, p.path[i]
-
-        if i == len(p.path) - 1:
-            indic += "Walk to the Cinema."
-            return indic
-
-        # ara estem en bus
-        assert g.nodes[n]['tipus'] == 'Parada' and \
-                                      g.nodes[n_ant]['tipus'] == 'Cruilla'
-
-        linia_parada: list[tuple[str, int]] = []  # (linia, parada on s'agafa)
-        parada: int = n  # per controlar on fem canvis de línia
-        ultima_parada: int = parada
-
-        i += 1
-        n_ant, n = p.path[i-1], p.path[i]
-
-        # cas trivial: passar per una parada però sense agafar bus.
-        if g.nodes[n]['tipus'] == 'Cruilla':
-            continue
-
-        # variables per controlar els canvis de linia del trajecte en bus
-        linies: set[str] = set([])
-        noves_linies: set[str] = set(g[n_ant][n]['linies'])
-        i += 1
-        n_ant, n = n, p.path[i]
-
-        # cas trivial: només s'agafa una parada de bus
-        if g.nodes[n]['tipus'] == 'Cruilla':
-            lin = noves_linies.pop()
-            indic += f"Camina fins la parada {g.nodes[n_ant]['nom']} " + \
-                     f"i agafa l'autobus {lin} fins la parada " + \
-                     f"{g.nodes[n]['nom']}."
-            g.nodes[n_ant]['color'] = 'yellow'
-            continue
-
-        linies = noves_linies
-        while g.nodes[n]['tipus'] == 'Parada' and i < len(p.path) - 1:
-            noves_linies = set(g[n_ant][n]['linies'])
-            if linies & noves_linies == set():
-                linia = linies.pop()  # qualsevol de les linies
-                linia_parada.append((linia, parada))
-                parada = n_ant  # actualitzar parada(transbord)
-                linies = noves_linies
-            else:
-                linies = linies & noves_linies
-            ultima_parada = n
-            i += 1
-            n_ant, n = n, p.path[i]
-
-        linia_parada.append((linies.pop(), parada))
-
-        # afegim el recorregut fet en bus
-        lin, par = linia_parada[0]
-        indic += f"Walk to the bus stop {g.nodes[par]['nom']}, " + \
-                 f"and take bus {lin}.\n"
-
-        g.nodes[par]['color'] = 'yellow'
-
-        for lin, par in linia_parada[1:]:
-            indic += f"Travel by bus to the stop {g.nodes[par]['nom']}," + \
-                     f" and transfer to line {lin}.\n"
-            g.nodes[par]['color'] = 'yellow'
-
-        lin, par = linia_parada[-1]
-        indic += f"Travel by bus to the stop " + \
-                 f"{g.nodes[ultima_parada]['nom']}.\n"
-
-    return indic
-
-
-def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
-    '''Guarda el graf g al fitxer filename'''
-    file = open(filename, 'wb')
-    pickle.dump(g, file)
-    file.close()
-
-
-def load_osmnx_graph(filename: str) -> OsmnxGraph:
-    '''Retorna el graf guardat al fitxer filename'''
-
-    file = open(filename, 'rb')
-    g = pickle.load(file)
-    file.close()
-    assert isinstance(g, OsmnxGraph)
-    return g
-
-
-def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
-    '''Retorna un graf fusió de g1 i g2'''
-    city: CityGraph = nx.Graph()
-    # add cinemas here?
-
-    for u, nbrsdict in g1.adjacency():
-        attr = g1.nodes[u]
-        city.add_node(u, **attr, color='black')
-        city.nodes[u]['tipus'] = 'Cruilla'
-
-        for v, edgesdict in nbrsdict.items():
-            attr = g1.nodes[v]
-            city.add_node(v, **attr, color='black')
-            city.nodes[v]['tipus'] = 'Cruilla'
-
-            eattr = edgesdict[0]
-            if u != v:
-                city.add_edge(u, v, **eattr,
-                              tipus='carrer', color='red',
-                              time=eattr['length'] / 1.5)
-
-    nearest_nodes: dict[int, int] = {}
-    parades_nodes: list[str] = []
-    list_x: list[float] = []
-    list_y: list[float] = []
-
-    for u in g2.nodes:
-        assert g2.nodes[u]['tipus'] == 'Parada'
-        attr = g2.nodes[u]
-        city.add_node(u, **attr, color='black')
-        list_x.append(g2.nodes[u]['pos'][0])
-        list_y.append(g2.nodes[u]['pos'][1])
-        parades_nodes.append(u)
-
-    parada_cruilla: list[int] = ox.nearest_nodes(g1, list_x, list_y,
-                                                 return_dist=False)
-
-    for i, u in enumerate(parades_nodes):
-        nearest_nodes[u] = parada_cruilla[i]
-
-    assert len(parada_cruilla) == len(nearest_nodes)
-
-    for u, v, k in g2.edges(data=True):
-        #  assert g2.nodes[edge]['tipus'] == 'Bus'
-        attr = k
-        i = nearest_nodes[u]
-        j = nearest_nodes[v]
-        time = nx.shortest_path_length(g1, i, j, weight='length') / 8.5
-        city.add_edge(u, v, **attr, time=time)  # **attr
-
-        coord_i = g1.nodes[i]['y'], g1.nodes[i]['x']
-        coord_j = g1.nodes[j]['y'], g1.nodes[j]['x']
-        coord_u = g2.nodes[u]['pos'][1], g2.nodes[u]['pos'][0]
-        coord_v = g2.nodes[v]['pos'][1], g2.nodes[v]['pos'][0]
-
-        city.add_edge(i, u, stipus='enllaç', color='green',
-                      time=(haversine(coord_i, coord_u) / 1.5) + 150)
-
-        city.add_edge(j, v, tipus='enllaç', color='green',
-                      time=(haversine(coord_j, coord_v) / 1.5) + 150)
-
-    return city
-
-
-def show(g: CityGraph) -> None:
-    '''Mostra g de forma interactiva en una finestra'''
-    posicions = nx.get_node_attributes(g, 'pos')
-    nx.draw(
-        g,
-        pos=posicions,
-        with_labels=False,
-        node_size=20,
-        node_color='lightblue',
-        edge_color='gray')
-    plt.show()
-
-
-def plot(g: CityGraph, filename: str) -> None:
-    '''Desa g com una imatge amb el mapa de la
-    cuitat de fons en l'arxiu filename'''
-
-    city_map = StaticMap(3500, 3500)
-    for pos in nx.get_node_attributes(g, 'pos').values():
-        city_map.add_marker(CircleMarker((pos[0], pos[1]), "black", 4))
-
-    for edge in g.edges:
-        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
-        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        node_1 = (edge[0])
-        node_2 = (edge[1])
-        city_map.add_line(
-            Line([coord_1, coord_2], g[node_1][node_2]['color'], 2))
-
-    image = city_map.render()
-    image.save(filename)
-
-
-def plot_path(p: Path, filename: str) -> None:
-    # hem tret paràmetre g: CityGraph
-    '''Mostra el camí p en l'arxiu filename'''
-    g = p.path_graph
-    city_map = StaticMap(3500, 3500)
-
-    for node in g.nodes:
-        city_map.add_marker(CircleMarker((
-                            g.nodes[node]['pos'][0],
-                            g.nodes[node]['pos'][1]),
-                            g.nodes[node]['color'], 15))
-
-    for edge in g.edges:
-        coord_1 = (g.nodes[edge[0]]['pos'][0], g.nodes[edge[0]]['pos'][1])
-        coord_2 = (g.nodes[edge[1]]['pos'][0], g.nodes[edge[1]]['pos'][1])
-        node_1 = (edge[0])
-        node_2 = (edge[1])
-        city_map.add_line(
-            Line([coord_1, coord_2], g[node_1][node_2]['color'], 10))
-
-    image = city_map.render()
-    image.save(filename)
-
-
-def print_osmnx_graph(g: OsmnxGraph) -> None:
-    street_graph_projected = ox.project_graph(g)
-    ox.plot_graph(street_graph_projected)
+class Demo:
+    '''Petit sistema de menús que ofeix una interfaç amb les
+    seguëunts funcionalitats:
+    - Veure la cartellera, cinemes, películes i gèneres
+    - Mètodes de cerca i filtratge a la cartellera
+    - Veure els mapes de les línies de bus i de la ciutat
+    - Mostrar el camí per anar a veure una pel·lícula desitjada
+      des d'un lloc donat en un moment donat
+    - Breu informació sobre els autors del projecte
+    '''
+
+    Bus: city.BusesGraph
+    Streets: city.OsmnxGraph
+    City: city.CityGraph
+    Bboard: bboard.Billboard
+
+    def __init__(self) -> None:
+        '''Constructor de la classe. Inicia el sistema de menús'''
+        return self.init_demo()
+
+    def clear(self) -> None:
+        '''Neteja la pantalla de la terminal'''
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    def show_png(self, image: ImageType) -> None:
+        '''Mostra en un pop-up la imatge donada, fent
+        servir la llibreria PIL. Si no es pot mostrar,
+        ho notifica a la terminal d'execució.'''
+        try:
+            image.show()
+        except Exception:
+            print('Could not plot image. Check your library, ' +
+                  'it should be downloaded.')
+
+    def plot_billboard_menu(self) -> None:
+        '''Mostra a la terminal el menú i les opcions de la Cartellera.'''
+
+        options = '[cyan]1 - Plot full billboard\n' + \
+                  '2 - Cinemas \n' + \
+                  '3 - Films \n' + \
+                  '4 - Genres \n' + \
+                  '5 - Filter \n' + \
+                  '0 - Return'
+
+        console.print(Panel(options, title="[magenta]Billboard options",
+                            expand=False))
+        return self.next_plot(shift=5, actual=1, options=[i for i in range(6)])
+
+    def plot_full_billboard(self) -> None:
+        '''Mostra a la terminal la certellera completa.'''
+        table = Table(title='BILLBOARD', border_style='blue3',
+                      safe_box=False, box=box.ROUNDED)
+
+        table.add_column("Film🎥", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Cinema🍿", justify='center', style="magenta")
+        table.add_column("Time🕗", justify="center", style="green")
+        table.add_column("Duration", justify="center", style="green")
+        table.add_column("Language🔊", justify="center", style="green")
+
+        for p in self.Bboard.projections:
+            table.add_row(
+                p.film.title,
+                p.cinema.name,
+                f'{p.start[0]}:{p.start[1]:02d}',
+                f'{p.duration}',
+                p.language)
+
+        console.print(table)
+        return self.next_plot(direct=1)
+
+    def plot_cinemas(self) -> None:
+        '''Mostra a la terminal la llista de cinemes de la cartellera'''
+        op: str = ''
+        for c in self.Bboard.cinemas:
+            op = op + c.name + '\n'
+        console.print(
+            Panel(op[:-1], title="[magenta]Cinemas", expand=False))
+        return self.next_plot(direct=1)
+
+    def plot_films(self) -> None:
+        '''Mostra a la terminal les películes de la cartellera.'''
+        op: str = ''
+        for f in self.Bboard.films:
+            op = op + f.title + '\n'
+        console.print(Panel(
+            op[:-1], title="[magenta]Films", expand=False))
+        return self.next_plot(direct=1)
+
+    def plot_genres(self) -> None:
+        '''Mostra a la terminal la llista dels gèneres
+        de les películes de la Cartellera'''
+        op: str = ''
+        for g in self.Bboard.genres:
+            op = op + g + '\n'
+        console.print(Panel(
+            op[:-1],
+            title="[magenta]Genres",
+            expand=False, safe_box=True))
+        return self.next_plot(direct=1)
+
+    def plot_filter(self) -> None:
+        '''Llegeix un filtre, l'aplica a la
+        cartellera i la mostra.'''
+        # op: str = ''
+        '''for f in Bboard.poss_filters:
+            op = op + f + '\n' --> ['cyan]{op[:-1]} '''
+
+        console.print(Panel(  # plot filter types available
+            '[cyan]' +
+            'genre ------ genre = name_genre\n' +
+            'director --- director = name_director\n' +
+            'film ------- film = film_title\n' +
+            'cinema ----- cinema = cinema_name\n' +
+            'time ------- time = hh:mm - hh:mm\n' +
+            '               (min_start - max_end)\n' +
+            'duration --- duration = duration_minutes\n' +
+            '                        (max_duration)\n' +
+            'language --- language = V.O. / Spanish\n' +
+            'city ------- city = city_Name',
+            title="[magenta]Filter types---Specific format",
+            expand=False))
+
+        print(f'Format: filter_type = ___ ; filter_type = ___ ; ...')
+        print('(Enter 0 to go back)')
+        f: str = str(input('Enter filters: '))
+
+        self.clear()
+        if f == '0':  # go back
+            return self.next_plot(direct=1)
+
+        filters: dict[str, str] = {}
+        try:
+            for x in f.split(';'):
+                k, v = x.split('=')
+                k = k.strip()
+                v = v.strip()
+                filters[k] = v
+        except Exception:
+            text = '[red]Wrong format!😓\n'
+            return self.next_plot(direct=10, text=text)
+
+        table = Table(title=f'BILLBOARD \n filters: {f}',
+                      border_style='blue3',
+                      safe_box=True, box=box.ROUNDED)
+
+        table.add_column("Film🎥", justify="center", style="cyan")
+        table.add_column("Cinema🍿", justify='center', style="magenta")
+        table.add_column("Time🕗", justify="center", style="green")
+        table.add_column("Duration", justify="center", style="green")
+        table.add_column("Language🔊", justify="center", style="green")
+
+        try:
+            filtered_billboard = self.Bboard.filter(filters)
+        except Exception:
+            txt = "[red]Sorry, couldn't apply this filter😥💀. \n"
+            return self.next_plot(direct=10, text=txt)
+        if len(filtered_billboard) == 0:
+            txt = '[red]No movies found with this filter. \n'
+            return self.next_plot(direct=10, text=txt)
+        for p in filtered_billboard:
+            table.add_row(
+                p.film.title,
+                p.cinema.name,
+                f'{p.start[0]}:{p.start[1]:02d}',
+                f'{p.duration}',
+                p.language)
+        console.print(table)
+
+        return self.next_plot(direct=10)
+
+    def plot_maps_menu(self) -> None:
+        '''Mostra a la terminal el menú dels mapes.'''
+        options = '[cyan]1 - Bus map\n' + \
+                  '2 - City map\n' + \
+                  '0 - Return'
+
+        console.print(Panel(options, title="[magenta]Maps", expand=False))
+        return self.next_plot(shift=11, actual=2, options=[0, 1, 2])
+
+    def plot_bus_map(self) -> None:
+        '''Mostra en un pop-up el mapa dels busos.'''
+        loader.start()
+        try:
+            image = Image.open('bus_map.png')
+        except Exception:
+            city.plot(self.Bus, 'bus_map.png')
+            image = Image.open('bus_map.png')
+        self.show_png(image)
+        loader.stop()
+
+        return self.next_plot(direct=2)
+
+    def plot_city_map(self):
+        '''Mostra en un pop-up el mapa de la ciutat.'''
+        loader.start()
+        try:
+            image = Image.open('city_map.png')
+        except Exception:
+            city.plot(self.City, 'city_map.png')
+            image = Image.open('city_map.png')
+        self.show_png(image)
+        loader.stop()
+
+        return self.next_plot(direct=2)
+
+    def plot_watch(self) -> None:
+        options = '[cyan]Wanna watch a movie? Tell us \n' + \
+            "wich one and we'll guide you."
+
+        console.print(Panel(options,
+                            title="[magenta]Watch movie", expand=False))
+        print('(Enter 0 to Return)')
+        movie = input('Enter movie: ').strip()
+
+        if movie == '0':  # Return
+            self.clear()
+            return self.next_plot(direct=14)
+        if movie not in [f.title for f in self.Bboard.films]:
+            text = ("[red]We can't find this movie!😓\n" +
+                    "Check the available movies at the billboard.")
+            return self.next_plot(direct=3, text=text)
+        try:
+            time = input('Enter your time disponibility\n' +
+                         '(Format: hh:mm-hh:mm): ')
+            start_time = time.split('-')[0]
+            FilteredBboard = self.Bboard.filter({'time': time,
+                                                 'city': 'Barcelona',
+                                                 'film': movie})
+            coords = input('Enter your position coordinates\n' +
+                           '(format: lat, long): ')
+            x_, y_ = coords.split(',')
+            x, y = float(x_.strip()), float(y_.strip())
+
+        except Exception:
+            text = ('[red]Wrong format!😓\n')
+            return self.next_plot(direct=3, text=text)
+
+        if FilteredBboard == []:
+            text = "Couldn't find any reachable session of this movie " + \
+                "with your disponibility.\nJust watch [red]Netflix: " + \
+                "[white]https://www.netflix.com/es/ \n"
+            return self.next_plot(direct=3, text=text)
+
+        try:
+            loader.start()
+            result = self.find_first_movie_path(FilteredBboard,
+                                                start_time, (x, y))
+            loader.stop()
+        except AssertionError:
+            loader.stop()
+            text = "It appears you are not in Barcelona. For now, " + \
+                "our program only works in Barcelona, sorry!"
+            return self.next_plot(direct=3, text=text)
+
+        if result is None:
+            text = "Couldn't find any reachable session of this movie" + \
+                " with your disponibility.\nJust watch [red]Netflix: " + \
+                "https://www.netflix.com/es/ \n"
+            return self.next_plot(direct=3, text=text)
+
+        path, projection = result
+        return self.plot_found_proj(path, projection)
+
+    def plot_found_proj(self, path: city.Path,
+                        proj: bboard.Projection) -> None:
+        '''Mostra els resultats obtinguts de la cerca de la
+        película que l'usuari ha demanar a la funció plot_watch().'''
+        options = f'[cyan]{proj.film.title} --- {proj.cinema.name} --- ' + \
+                  f'start {proj.start[0]:02d}:{proj.start[1]:02d} --- ' + \
+                  f'duration {proj.duration}m'
+        try:
+            indic: str = city.path_indications(path)
+            options += f'\n\n   [green]INDICATIONS:\n[white]{indic}\n' + \
+                       f'   [green]Estimated travel time: {path.time} minutes'
+        except Exception:
+            pass
+
+        console.print(Panel(options, title="[magenta]Movie found!",
+                            expand=False))
+
+        loader.start()
+        city.plot_path(path, 'path.png')
+        image = Image.open('path.png')
+        self.show_png(image)
+        loader.stop()
+
+        return self.next_plot(direct=16)
+
+    def find_first_movie_path(
+            self,
+            FilteredBboard: list[bboard.Projection],
+            time_: str,
+            coords: city.Coord) -> tuple[city.Path, bboard.Projection] | None:
+        '''Donada la llista de projeccions ja filtrada, busca la
+        primera projecció a la que s'hi pot arribar des de la posició
+        indicada i el temps inicial donat. Retorna el camí fins a aquesta.
+        '''
+        self.clear()
+        h, m = time_.split(':')
+        time = int(h) * 60 + int(m)  # time in minutes
+
+        '''projection: bboard.Projection = FilteredBboard[0]
+        movie_coords: city.Coord = projection.cinema.coord
+        h, m = projection.start
+        movie_start = int(h) * 60 + int(m)  # time in minutes
+        path: city.Path = city.find_path(self.Streets, self.City,
+                                         coords, movie_coords)'''
+
+        proj: bboard.Projection
+        for proj in FilteredBboard:
+            movie_coords: city.Coord = proj.cinema.coord
+            h, m = proj.start
+            movie_start = int(h) * 60 + int(m)  # time in minutes
+            path: city.Path = city.find_path(self.Streets, self.City,
+                                             coords, movie_coords)
+
+            if time + path.time <= movie_start:
+                return path, proj
+
+        return None  # could't find any path :'(
+
+    def plot_about_us(self) -> None:
+        '''Mostra una petita pestanya sobre l'informació
+        dels autors del projecte.'''
+
+        text = ('[cyan]AUTORS: [magenta2]Pau·(Mateo∧Fernández)\n' +
+                '[cyan]First year students of Data science and engineering\n' +
+                'at UPC - Barcelona\n' +
+                'Contact us: pau.mateo.bernado@estudiantat.upc.edu\n' +
+                '            pau.fernandez.cester@estudiantat.upc.edu')
+
+        console.print(Panel(text, title="[magenta]About Us", expand=False))
+        return self.next_plot(direct=16)
+
+    def plot_main_menu(self) -> None:
+        options = ('[cyan]1 - Billboard\n' +
+                   '2 - Maps \n' +
+                   '3 - Watch \n' +
+                   '4 - About us\n' +
+                   '0 - Exit')
+
+        console.print(Panel(options, title="[magenta]Options", expand=False))
+        return self.next_plot(shift=0, actual=16,
+                              options=[i for i in range(5)])
+
+    def next_plot(self,
+                  shift: int = -1,
+                  actual: int = -1,
+                  direct: int = -1,
+                  options: list[int] = [],
+                  text: str = '') -> None:
+        '''funció que retorna el plot corresponent a la crida. Shift és només
+        per correspondre el nombre que entre l'usuari amb els "identificadors"
+        de cada plot. actual és l'identificador de la funció que ha fet la
+        crida. Options són els nombres que l'usuari pot donar.
+        Si es dona un nombre per la variable direct, es retorna directament
+        la funció corresponent al nombre. '''
+
+        if text != '':
+            self.clear()
+            console.print(text)
+        if direct != -1:
+            num = direct
+        else:
+            try:
+                num = int(input('Enter option number: '))
+                self.clear()  # clear terminal
+            except ValueError:
+                self.clear()
+                console.print('[red]You must introduce a number!😡💀\n')
+                return self.next_plot(direct=actual)
+            except Exception:
+                self.clear()
+                console.print('[red]Sorry, something went wrong!😭💀🤨\n')
+                return self.next_plot(direct=actual)
+
+            if num not in options:
+                self.clear()
+                console.print("[red]This option doesen't exist!😡\n")
+                return self.next_plot(direct=actual)
+            num += shift  # trobar l'identificador corresponent
+
+        if num == 0:
+            console.print(Panel(f'[green]See you soon!👋😘',
+                          expand=False,
+                          border_style='green3'))
+
+        if num in [5, 11, 14, 15]:
+            return self.plot_main_menu()  # 'Return options'
+        if num == 1:
+            return self.plot_billboard_menu()
+        if num == 2:
+            return self.plot_maps_menu()
+        if num == 3:
+            return self.plot_watch()
+        if num == 4:
+            return self.plot_about_us()
+        if num == 6:
+            return self.plot_full_billboard()
+        if num == 7:
+            return self.plot_cinemas()
+        if num == 8:
+            return self.plot_films()
+        if num == 9:
+            return self.plot_genres()
+        if num == 10:
+            return self.plot_filter()
+        if num == 12:
+            return self.plot_bus_map()
+        if num == 13:
+            return self.plot_city_map()
+        if num == 16:
+            return self.plot_main_menu()
+
+    def get_data(self) -> tuple[bboard.Billboard, city.BusesGraph,
+                                city.OsmnxGraph, city.CityGraph]:
+        '''Descarrega les dades necessàries per
+        executar el programa.'''
+        self.Bboard = bboard.read()
+        self.Bboard.genres = film_genres  # (generes amb emojis)
+        self.Bus = city.get_buses_graph()
+        try:
+            self.Streets = city.load_osmnx_graph('osmnx_Bcn.pickle')
+        except Exception:
+            try:
+                self.Streets = city.get_osmnx_graph()
+            except Exception:
+                loader.stop()
+                console.print('[red]Could not get data from OpenStreepMap.')
+                exit(1)
+            try:
+                city.save_osmnx_graph(self.Streets, 'osmnx_Bcn.pickle')
+            except Exception:
+                self.clear()
+                console.print('[red]Could not save Osmnx graph.')
+        try:
+            self.City: city.CityGraph = city.build_city_graph(self.Streets,
+                                                              self.Bus)
+            return self.Bboard, self.Bus, self.Streets, self.City
+        except Exception:
+            console.print('[red]Sorry, something went wrong!😭💀🤨')
+            exit(1)
+
+    def init_demo(self) -> None:
+        self.clear()
+        loader.start()
+        self.get_data()
+        loader.stop()
+        self.clear()
+        self.plot_main_menu()
+
+
+if __name__ == "__main__":
+    Demo()
