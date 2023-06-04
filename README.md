@@ -37,10 +37,10 @@ You can install this packages one by one with `pip3 install package_name`, or ju
 pip3 install -r requirements.txt
 ```
 
-Optionally, exclusifly for user's view, we reccommend to dowload the file ... . It does not affect execution of the program.
+Optionally, exclusifly for user's view, we reccommend to dowload the file `map_pointer.png` in the same directory where to run the program. It does not affect execution of the program.
 
 ## Usage
 **Things to consider:**
 - Currently, this project is exclusively confined to the city of Barcelona, some functionallities will not work outside Barcelona.
-
+- The user interface is made in English, but the language of the Billboard it's in _spanish_. Therefore, all the names and search methods require to use the film names, cinemas names... in spanish.
 
