@@ -67,7 +67,7 @@ Here are some examples:
 ```
 
 ## Authors <picture>  <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.webp" type="image/webp">  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.gif" alt="🤓" width="32" height="32"></picture>
-Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester](https://github.com/PauFdz), first year students of Data Science and Engineering at UPC, 2022-23. 
+Developed by [Pau Mateo Bernado](https://github.com/PauMateo) and [Pau Fernández Cester](https://github.com/PauFdz), Data Science students at GCED, UPC. (2022-23). 
 
 Contact us:  `pau.mateo.bernado@estudiantat.upc.edu`,  `pau.fernandez.cesterestudiantat.upc.edu`
 
